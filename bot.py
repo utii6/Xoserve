@@ -20,12 +20,12 @@ def keep_alive():
     t = Thread(target=run)
     t.start()
 
-# --- الإعدادات (Environment Variables) ---
+# --- الإعدادات (جلب القيم من إعدادات Render) ---
 API_TOKEN = os.getenv('BOT_TOKEN')
 SMM_API_KEY = os.getenv('SMM_API_KEY')
 CH_ID = os.getenv('CHANNEL_USERNAME') 
 ADMIN_ID = os.getenv('ADMIN_ID')
-API_URL = "https://kd1s.com/api/v2" # تأكد من رابط API موقعك
+API_URL = os.getenv('API_URL') # يفضل وضعه في Render (مثال: https://smm-site.com/api/v2)
 
 bot = telebot.TeleBot(API_TOKEN, parse_mode="Markdown")
 
@@ -36,17 +36,10 @@ cursor = conn.cursor()
 cursor.execute('CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY, last_request REAL)')
 conn.commit()
 
-# --- أرقام الخدمات التي قدمتها ---
-SERVICES = {
-    "مشاهدات": 14527,
-    "مشتركين": 14681,
-    "تفاعلات": 13925
-}
-
 # --- الدوال المساعدة ---
 def get_total_users():
     cursor.execute('SELECT COUNT(*) FROM users')
-    return 8375 + cursor.fetchone()[0]
+    return 8463 + cursor.fetchone()[0]
 
 def is_subscribed(user_id):
     try:
@@ -63,14 +56,14 @@ def main_inline_menu():
     markup.add(btn1, btn2, btn3, btn4)
     return markup
 
-# --- الأوامر ---
+# --- الأوامر الرئيسية ---
 @bot.message_handler(commands=['start'])
 def start(message):
     user_id = message.from_user.id
     name = message.from_user.first_name
     username = f"@{message.from_user.username}" if message.from_user.username else "لا يوجد"
 
-    # التفاعل بـ 👍
+    # التفاعل التلقائي 👍
     try:
         bot.set_message_reaction(message.chat.id, message.message_id, [types.ReactionTypeEmoji("🔥")], is_big=False)
     except: pass
@@ -93,8 +86,8 @@ def start(message):
     # التحقق من الاشتراك الإجباري
     if not is_subscribed(user_id):
         markup = types.InlineKeyboardMarkup()
-        markup.add(types.InlineKeyboardButton("اضغط هنا للاشتراك 📢", url=f"https://t.me/{CH_ID.replace('@','')}"))
-        bot.send_message(message.chat.id, f"⚠️ *عذراً عزيزي،*\n\n*يجب عليك الاشتراك في القناة أولاً*\n*لكي تستطيع استخدام كافة خدمات البوت مجاناً!*", reply_markup=markup)
+        markup.add(types.InlineKeyboardButton(" مَـدار 📢", url=f"https://t.me/{CH_ID.replace('@','')}"))
+        bot.send_message(message.chat.id, f"⚠️ *عذراً عزيزي،*\n\n*يجب عليك الاشتراك في القناة أولاً*\n*!*", reply_markup=markup)
         return
 
     welcome_text = (f"✨ * أهلاً بك في بوت الخدمات المجانية* ✨\n\n"
@@ -103,9 +96,10 @@ def start(message):
                     f"• *ارسله لصاحبك يستفاد مثلك ↗️* \n"
                     f"• *Dev: @E2E12 👨🏼‍💻* \n\n"
                       )
-
+    
     bot.send_message(message.chat.id, welcome_text, reply_markup=main_inline_menu())
 
+# --- معالجة الضغط على الأزرار ---
 @bot.callback_query_handler(func=lambda call: True)
 def handle_query(call):
     user_id = call.from_user.id
@@ -119,7 +113,7 @@ def handle_query(call):
     if call.data.startswith("service_"):
         service_id = call.data.split("_")[1]
         
-        # تحقق من الوقت (12 ساعة)
+        # تحقق من وقت الانتظار (12 ساعة)
         cursor.execute('SELECT last_request FROM users WHERE user_id=?', (user_id,))
         row = cursor.fetchone()
         if row and row[0] and (time.time() - row[0]) < (12 * 3600):
@@ -136,27 +130,33 @@ def process_api_request(message, service_id):
     user_id = message.from_user.id
 
     if not link.startswith("http"):
-        bot.send_message(message.chat.id, "❌ *الرابط غير صحيح، حاول مرة أخرى .*")
+        bot.send_message(message.chat.id, "❌ *الرابط غير صحيح، حاول مجدداً.*")
         return
 
+    # إعداد الطلب بالكمية الثابتة 100
     payload = {
         'key': SMM_API_KEY,
         'action': 'add',
         'service': service_id,
         'link': link,
-        'quantity': 10 # الكمية المجانية
+        'quantity': 100  # الكمية الموحدة لجميع الطلبات
     }
 
     try:
-        response = requests.post(API_URL, data=payload).json()
-        if "order" in response:
+        response = requests.post(API_URL, data=payload)
+        res_json = response.json()
+        
+        if "order" in res_json:
+            # تحديث الوقت في قاعدة البيانات بعد نجاح الطلب
             cursor.execute('UPDATE users SET last_request=? WHERE user_id=?', (time.time(), user_id))
             conn.commit()
-            bot.send_message(message.chat.id, f"✅ *تم إرسال الطلب بنجاح!*\n• رقم الطلب: `{response['order']}`\n\nانتظر التنفيذ خلال دقائق.")
+            bot.send_message(message.chat.id, f"✅ *تم إرسال طلبك بنجاح!*\n• رقم الطلب: `{res_json['order']}`\n• الكمية: `100`")
+        elif "error" in res_json:
+            bot.send_message(message.chat.id, f"❌ *خطأ من المصدر:* {res_json['error']}")
         else:
-            bot.send_message(message.chat.id, "❌ *عذراً، الخدمة غير متوفرة حالياً في البوت .*")
-    except:
-        bot.send_message(message.chat.id, "⚙️ *حدث خطأ في الاتصال.*")
+            bot.send_message(message.chat.id, "❌ *فشلت العملية، تأكد من الرابط  .*")
+    except Exception as e:
+        bot.send_message(message.chat.id, "⚙️ *خطأ في الاتصال.*")
 
 if __name__ == "__main__":
     keep_alive()
