@@ -25,7 +25,7 @@ API_TOKEN = os.getenv('BOT_TOKEN')
 SMM_API_KEY = os.getenv('SMM_API_KEY')
 CH_ID = os.getenv('CHANNEL_USERNAME') 
 ADMIN_ID = os.getenv('ADMIN_ID')
-API_URL = "https://provider-site.com/api/v2" # تأكد من رابط API موقعك
+API_URL = "https://kd1s.com/api/v2" # تأكد من رابط API موقعك
 
 bot = telebot.TeleBot(API_TOKEN, parse_mode="Markdown")
 
@@ -99,9 +99,9 @@ def start(message):
 
     welcome_text = (f"✨ * أهلاً بك في بوت الخدمات المجانية* ✨\n\n"
                     f"🚀 *يمكنك من خلال البوت زيادة:*\n"
-                    f"• *تفاعل قناتك مجاناً* \n"
-                    f"• *ارسله لصاحبك يستفاد مثلك* \n"
-                    f"• *Dev: @E2E12* \n\n"
+                    f"• *تفاعل قناتك مجاناً 🆓* \n"
+                    f"• *ارسله لصاحبك يستفاد مثلك ↗️* \n"
+                    f"• *Dev: @E2E12 👨🏼‍💻* \n\n"
                       )
 
     bot.send_message(message.chat.id, welcome_text, reply_markup=main_inline_menu())
