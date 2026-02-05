@@ -6,7 +6,7 @@ import telebot
 from flask import Flask
 from threading import Thread
 from telebot import types
-admin_panel.register(bot, cursor, conn)
+import admin_panel
 
 # --- إعداد الخادم لإبقاء البوت حياً ---
 app = Flask('')
