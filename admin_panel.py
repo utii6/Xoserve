@@ -2,7 +2,7 @@
 import time
 from telebot import types
 
-ADMIN_ID = int(__import__("os").getenv("ADMIN_ID"))
+ADMIN_ID = int(__import__("os").getenv("5581457665"))
 
 def register(bot, cursor, conn):
 
