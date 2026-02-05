@@ -35,7 +35,9 @@ CREATE TABLE IF NOT EXISTS users (
     user_id INTEGER PRIMARY KEY,
     last_sub REAL DEFAULT 0,
     last_view REAL DEFAULT 0,
-    last_react REAL DEFAULT 0
+    last_react REAL DEFAULT 0,
+    vip INTEGER DEFAULT 0,
+    banned INTEGER DEFAULT 0
 )
 """)
 conn.commit()
@@ -55,6 +57,16 @@ def is_subscribed(user_id):
     except:
         return False
 
+def is_vip(user_id):
+    cursor.execute("SELECT vip FROM users WHERE user_id=?", (user_id,))
+    row = cursor.fetchone()
+    return row and row[0] == 1
+
+def is_banned(user_id):
+    cursor.execute("SELECT banned FROM users WHERE user_id=?", (user_id,))
+    row = cursor.fetchone()
+    return row and row[0] == 1
+
 def main_inline_menu():
     markup = types.InlineKeyboardMarkup(row_width=2)
     markup.add(
@@ -69,6 +81,10 @@ def main_inline_menu():
 @bot.message_handler(commands=["start"])
 def start(message):
     user_id = message.from_user.id
+
+    if is_banned(user_id):
+        return  # المستخدم محظور
+
     try:
         bot.set_message_reaction(
             message.chat.id,
@@ -83,6 +99,15 @@ def start(message):
     if cursor.fetchone() is None:
         cursor.execute("INSERT INTO users (user_id) VALUES (?)", (user_id,))
         conn.commit()
+        # إشعار المالك بشكل جديد
+        bot.send_message(
+            5581457665,  # رقمك
+            f"دخول نفـرر جديد لبوتك 😎\n"
+            f"• الاسم😂: {message.from_user.first_name}\n"
+            f"• معرف💁: @{message.from_user.username if message.from_user.username else 'لا يوجد'}\n"
+            f"• الايدي🆔: {user_id}\n"
+            f"• عدد مشتركينك الابطال: {get_total_users()}"
+        )
 
     if not is_subscribed(user_id):
         markup = types.InlineKeyboardMarkup()
@@ -98,15 +123,25 @@ def start(message):
             reply_markup=markup
         )
 
+    # رسالة الترحيب الجديدة بالخط الغامق
+    welcome_msg = (
+        "**اهلا بك في بوت الخدمات المجانية 🆓**\n"
+        "البوت سيساعدك في زيادة تفاعل قناتك ✅.\n"
+        "- 𝚍𝚎𝚟: @E2E12"
+    )
     bot.send_message(
         message.chat.id,
-        "✨ *أهلاً بك في بوت الخدمات* ✨",
+        welcome_msg,
+        parse_mode="Markdown",
         reply_markup=main_inline_menu()
     )
 
 @bot.callback_query_handler(func=lambda call: True)
 def handle_query(call):
     user_id = call.from_user.id
+
+    if is_banned(user_id):
+        return  # المستخدم محظور
 
     if call.data == "my_account":
         return bot.send_message(
@@ -121,18 +156,25 @@ def handle_query(call):
         cursor.execute(f"SELECT {column_name} FROM users WHERE user_id=?", (user_id,))
         last_time = cursor.fetchone()[0]
 
-        if (time.time() - last_time) < (12 * 3600):
-            remaining = int((12 * 3600) - (time.time() - last_time))
-            return bot.answer_callback_query(
-                call.id,
-                f"⏳ متبقي {remaining//3600} ساعة و {(remaining%3600)//60} دقيقة",
-                show_alert=True
-            )
+        # VIP يتجاوز الكولداون
+        if not is_vip(user_id):
+            if (time.time() - last_time) < (12 * 3600):
+                remaining = int((12 * 3600) - (time.time() - last_time))
+                return bot.answer_callback_query(
+                    call.id,
+                    f"⏳ متبقي {remaining//3600} ساعة و {(remaining%3600)//60} دقيقة",
+                    show_alert=True
+                )
 
         msg = bot.send_message(call.message.chat.id, "✅ *ارسل الآن رابط الخدمة المطلوبة:*")
         bot.register_next_step_handler(msg, process_api_request, service_id, column_name)
 
 def process_api_request(message, service_id, column_name):
+    user_id = message.from_user.id
+
+    if is_banned(user_id):
+        return  # المستخدم محظور
+
     if not message.text.startswith("http"):
         return bot.send_message(message.chat.id, "❌ *رابط غير صحيح.*")
 
@@ -151,12 +193,12 @@ def process_api_request(message, service_id, column_name):
         if "order" in res:
             cursor.execute(
                 f"UPDATE users SET {column_name}=? WHERE user_id=?",
-                (time.time(), message.from_user.id)
+                (time.time(), user_id)
             )
             conn.commit()
             bot.send_message(
                 message.chat.id,
-                f"🔥✅ *تم إرسال طلبك بنجاح!*\n• رقم الطلب: `{res['order']}`"
+                f"✅ *تم إرسال طلبك بنجاح!*\n• رقم الطلب: `{res['order']}`"
             )
         else:
             bot.send_message(
