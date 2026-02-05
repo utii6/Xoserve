@@ -1,160 +1,127 @@
-import os, time, sqlite3, requests, telebot
+import os
+import time
+import sqlite3
+import requests
+import telebot
 from flask import Flask
 from threading import Thread
 from telebot import types
 
-# --- خادم إبقاء البوت حياً ---
+# --- إعداد الخادم لإبقاء البوت حياً ---
 app = Flask('')
 @app.route('/')
-def home(): return "البوت يعمل بكفاءة ✅"
-def run(): app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
-def keep_alive():
-    t = Thread(target=run); t.daemon = True; t.start()
+def home(): return "البوت يعمل بنجاح ✅"
 
-# --- الإعدادات من Render ---
+def run():
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
+
+def keep_alive():
+    t = Thread(target=run)
+    t.daemon = True
+    t.start()
+
+# --- الإعدادات ---
 API_TOKEN = os.getenv('BOT_TOKEN')
 SMM_API_KEY = os.getenv('SMM_API_KEY')
+CH_ID = os.getenv('CHANNEL_USERNAME') 
+ADMIN_ID = os.getenv('ADMIN_ID')
 API_URL = os.getenv('API_URL')
-ADMIN_ID = int(os.getenv('ADMIN_ID'))
+
 bot = telebot.TeleBot(API_TOKEN, parse_mode="Markdown")
 
-# --- إدارة قاعدة البيانات ---
-db_path = 'users.db'
-def get_db():
-    conn = sqlite3.connect(db_path, check_same_thread=False)
-    return conn, conn.cursor()
-
-# إنشاء الجداول والقيم الافتراضية عند التشغيل
-conn, cursor = get_db()
-cursor.execute('CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY, last_sub REAL DEFAULT 0, last_view REAL DEFAULT 0, last_react REAL DEFAULT 0, is_vip INTEGER DEFAULT 0, is_banned INTEGER DEFAULT 0)')
-cursor.execute('CREATE TABLE IF NOT EXISTS settings (id INTEGER PRIMARY KEY, force_channel TEXT, quantity INTEGER DEFAULT 100, welcome_msg TEXT)')
-cursor.execute('SELECT COUNT(*) FROM settings')
-if cursor.fetchone()[0] == 0:
-    cursor.execute('INSERT INTO settings (id, force_channel, quantity, welcome_msg) VALUES (1, "None", 100, "✨ أهلاً بك في البوت!")')
+# --- قاعدة البيانات (تحديث لدعم كل خدمة على حدة) ---
+db_path = os.path.join(os.getcwd(), 'users.db')
+conn = sqlite3.connect(db_path, check_same_thread=False)
+cursor = conn.cursor()
+# الجدول الآن يخزن وقت طلب المشتركين، المشاهدات، والتفاعلات بشكل منفصل
+cursor.execute('''CREATE TABLE IF NOT EXISTS users 
+                  (user_id INTEGER PRIMARY KEY, 
+                   last_sub REAL DEFAULT 0, 
+                   last_view REAL DEFAULT 0, 
+                   last_react REAL DEFAULT 0)''')
 conn.commit()
 
-# --- الدوال المساعدة ---
-def get_settings():
-    _, c = get_db()
-    c.execute('SELECT force_channel, quantity, welcome_msg FROM settings WHERE id=1')
-    return c.fetchone()
+def get_total_users():
+    cursor.execute('SELECT COUNT(*) FROM users')
+    return 8746 + cursor.fetchone()[0]
 
-# --- لوحة التحكم (Admin Panel) ---
-def admin_keyboard():
+def is_subscribed(user_id):
+    try:
+        status = bot.get_chat_member(CH_ID, user_id).status
+        return status in ['member', 'administrator', 'creator']
+    except: return False
+
+def main_inline_menu():
     markup = types.InlineKeyboardMarkup(row_width=2)
     markup.add(
-        types.InlineKeyboardButton("📢 إذاعة", callback_data="adm_bc"),
-        types.InlineKeyboardButton("🚫 حظر/فك", callback_data="adm_ban"),
-        types.InlineKeyboardButton("💎 إدارة VIP", callback_data="adm_vip"),
-        types.InlineKeyboardButton("🔢 كمية الطلب", callback_data="adm_qty"),
-        types.InlineKeyboardButton("📢 قناة الاشتراك", callback_data="adm_chn"),
-        types.InlineKeyboardButton("📊 الإحصائيات", callback_data="adm_sts")
+        types.InlineKeyboardButton("👥 زيادة مشتركين", callback_data="ser_sub_14681"),
+        types.InlineKeyboardButton("👀 زيادة مشاهدات", callback_data="ser_view_14527"),
+        types.InlineKeyboardButton("❤️ تفاعلات", callback_data="ser_react_13925"),
+        types.InlineKeyboardButton("👤 حسابي", callback_data="my_account")
     )
     return markup
 
-@bot.message_handler(commands=['admin'])
-def admin_command(message):
-    if message.from_user.id == ADMIN_ID:
-        bot.send_message(message.chat.id, "🛠 * لوحة تحكم المطور والسلطان الوالي:*", reply_markup=admin_keyboard())
-
-# --- أوامر المستخدم ---
 @bot.message_handler(commands=['start'])
 def start(message):
-    uid = message.from_user.id
-    conn, c = get_db()
-    c.execute('SELECT is_banned FROM users WHERE user_id=?', (uid,))
-    res = c.fetchone()
-    if res and res[0] == 1: return bot.send_message(message.chat.id, "😂❌ أنت محظور.")
-    if res is None:
-        c.execute('INSERT INTO users (user_id) VALUES (?)', (uid,))
+    user_id = message.from_user.id
+    try: bot.set_message_reaction(message.chat.id, message.message_id, [types.ReactionTypeEmoji("🔥")], is_big=False)
+    except: pass
+
+    cursor.execute('SELECT user_id FROM users WHERE user_id=?', (user_id,))
+    if cursor.fetchone() is None:
+        cursor.execute('INSERT INTO users (user_id) VALUES (?)', (user_id,))
         conn.commit()
-    
-    sets = get_settings()
-    # فحص الاشتراك
-    if sets[0] != "None":
-        try:
-            status = bot.get_chat_member(sets[0], uid).status
-            if status not in ['member', 'administrator', 'creator']:
-                markup = types.InlineKeyboardMarkup()
-                markup.add(types.InlineKeyboardButton("مَـدار 🪐", url=f"https://t.me/{sets[0].replace('@','')}"))
-                return bot.send_message(message.chat.id, "⚠️ يجب الاشتراك أولاً!", reply_markup=markup)
-        except: pass
+        bot.send_message(ADMIN_ID, f"*نفر جديد دخل للبوت!* 😎\n• الاسم: {message.from_user.first_name}\n• المشتركين: {get_total_users()}")
 
-    markup = types.InlineKeyboardMarkup(row_width=2)
-    markup.add(
-        types.InlineKeyboardButton("👥 مشتركين", callback_data="ser_sub_14681"),
-        types.InlineKeyboardButton("👀 مشاهدات", callback_data="ser_view_14527"),
-        types.InlineKeyboardButton("❤️ تفاعلات", callback_data="ser_react_13925"),
-        types.InlineKeyboardButton("👤 حسابي", callback_data="my_acc")
-    )
-    bot.send_message(message.chat.id, sets[2], reply_markup=markup)
+    if not is_subscribed(user_id):
+        markup = types.InlineKeyboardMarkup()
+        markup.add(types.InlineKeyboardButton(" مَـدار 📢", url=f"https://t.me/{CH_ID.replace('@','')}"))
+        return bot.send_message(message.chat.id, "⚠️ *يجب الاشتراك بالقناة أولاً!*", reply_markup=markup)
 
-# --- معالجة الضغطات ---
+    bot.send_message(message.chat.id, "✨ *أهلاً بك في بوت الخدمات المجانية* ✨\n\n", reply_markup=main_inline_menu())
+
 @bot.callback_query_handler(func=lambda call: True)
-def handle_all_calls(call):
-    uid = call.from_user.id
-    conn, c = get_db()
+def handle_query(call):
+    user_id = call.from_user.id
+    if call.data == "my_account":
+        return bot.send_message(call.message.chat.id, f"👤 *حسابك:*\n• ايدي: `{user_id}`\n• المشتركين في البوت: {get_total_users()}")
 
-    if call.data.startswith("adm_") and uid == ADMIN_ID:
-        if call.data == "adm_sts":
-            c.execute('SELECT COUNT(*) FROM users'); count = c.fetchone()[0]
-            bot.answer_callback_query(call.id, f"المستخدمين: {count}", show_alert=True)
-        elif call.data == "adm_bc":
-            msg = bot.send_message(call.message.chat.id, "ارسل نص الإذاعة:")
-            bot.register_next_step_handler(msg, broadcast_step)
-        elif call.data == "adm_qty":
-            msg = bot.send_message(call.message.chat.id, "ارسل الكمية الجديدة:")
-            bot.register_next_step_handler(msg, qty_step)
-        elif call.data == "adm_chn":
-            msg = bot.send_message(call.message.chat.id, "ارسل معرف القناة (مثلاً @e2e12) أو None:")
-            bot.register_next_step_handler(msg, chn_step)
+    if call.data.startswith("ser_"):
+        data = call.data.split("_")
+        service_type = data[1] # sub, view, or react
+        service_id = data[2]
+        
+        column_name = f"last_{service_type}"
+        cursor.execute(f'SELECT {column_name} FROM users WHERE user_id=?', (user_id,))
+        last_time = cursor.fetchone()[0]
+        
+        if (time.time() - last_time) < (12 * 3600):
+            remaining = int((12 * 3600) - (time.time() - last_time))
+            return bot.answer_callback_query(call.id, f"⏳ متبقي لهذه الخدمة {remaining//3600} ساعة و {(remaining%3600)//60} دقيقة", show_alert=True)
 
-    elif call.data == "my_acc":
-        c.execute('SELECT is_vip FROM users WHERE user_id=?', (uid,))
-        v = "💎 VIP" if c.fetchone()[0] == 1 else "👤 عادي"
-        bot.send_message(call.message.chat.id, f"👤 ايدي: `{uid}`\nحالتك: {v}")
+        bot.answer_callback_query(call.id)
+        msg = bot.send_message(call.message.chat.id, f"✅ *ارسل الآن رابط الخدمة المطلوبة:*")
+        bot.register_next_step_handler(msg, process_api_request, service_id, column_name)
 
-    elif call.data.startswith("ser_"):
-        stype, sid = call.data.split("_")[1], call.data.split("_")[2]
-        col = f"last_{stype}"
-        c.execute(f'SELECT {col}, is_vip FROM users WHERE user_id=?', (uid,))
-        lt, vip = c.fetchone()
-        if vip == 0 and (time.time() - lt) < 43200:
-            return bot.answer_callback_query(call.id, "⏳ متبقي وقت للانتظار!", show_alert=True)
-        msg = bot.send_message(call.message.chat.id, "🔗 ارسل الرابط:")
-        bot.register_next_step_handler(msg, order_step, sid, col, vip)
+def process_api_request(message, service_id, column_name):
+    if not message.text.startswith("http"):
+        return bot.send_message(message.chat.id, "❌ *رابط غير صحيح.*")
 
-# --- دوال الخطوات (Next Step Handlers) ---
-def broadcast_step(m):
-    conn, c = get_db()
-    c.execute('SELECT user_id FROM users')
-    users = c.fetchall()
-    for u in users:
-        try: bot.send_message(u[0], m.text)
-        except: continue
-    bot.send_message(m.chat.id, "😂✅ تمت الإذاعة.")
+    payload = {'key': SMM_API_KEY, 'action': 'add', 'service': service_id, 'link': message.text, 'quantity': 100}
 
-def qty_step(m):
-    if m.text.isdigit():
-        conn, c = get_db(); c.execute('UPDATE settings SET quantity=? WHERE id=1', (int(m.text),)); conn.commit()
-        bot.send_message(m.chat.id, "✅ تم التحديث.")
-
-def chn_step(m):
-    conn, c = get_db(); c.execute('UPDATE settings SET force_channel=? WHERE id=1', (m.text,)); conn.commit()
-    bot.send_message(m.chat.id, "✅ تم تحديث القناة.")
-
-def order_step(m, sid, col, vip):
-    if not m.text.startswith("http"): return bot.send_message(m.chat.id, "❌ رابط خطأ.")
-    sets = get_settings()
     try:
-        res = requests.post(API_URL, data={'key': SMM_API_KEY, 'action': 'add', 'service': sid, 'link': m.text, 'quantity': sets[1]}).json()
+        response = requests.post(API_URL, data=payload, timeout=10)
+        res = response.json()
         if "order" in res:
-            if vip == 0:
-                conn, c = get_db(); c.execute(f'UPDATE users SET {col}=? WHERE user_id=?', (time.time(), m.from_user.id)); conn.commit()
-            bot.send_message(m.chat.id, f"✅ تم الطلب! رقم: {res['order']}")
-        else: bot.send_message(m.chat.id, f"❌ رد الموقع: {res.get('error')}")
-    except: bot.send_message(m.chat.id, "⚙️ فشل.")
+            cursor.execute(f'UPDATE users SET {column_name}=? WHERE user_id=?', (time.time(), message.from_user.id))
+            conn.commit()
+            bot.send_message(message.chat.id, f"✅ *تم إرسال طلبك بنجاح!*\n• رقم الطلب: `{res['order']}`")
+        else:
+            bot.send_message(message.chat.id, f"❌ *رد الموقع:* {res.get('error', 'خطأ غير معروف')}")
+    except:
+        bot.send_message(message.chat.id, "⚙️ *فشل الاتصال .*")
 
 if __name__ == "__main__":
     keep_alive()
-    bot.infinity_polling()
+    bot.infinity_polling(timeout=20, long_polling_timeout=10)
