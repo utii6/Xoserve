@@ -1,160 +1,104 @@
-# admin_panel.py
-import time
 from telebot import types
+import time
 
-ADMIN_ID = 5581457665  # ضع رقم حسابك هنا مباشرة
+# قائمة القنوات الإجباري الاشتراك فيها
+mandatory_channels = []
+
+# تخزين كمية الطلب لكل خدمة
+service_quantity = {
+    "sub": 100,
+    "view": 100,
+    "react": 100
+}
 
 def register(bot, cursor, conn):
-
-    # ================== قواعد البيانات ==================
-    cursor.execute("CREATE TABLE IF NOT EXISTS banned_users (user_id INTEGER PRIMARY KEY)")
-    cursor.execute("CREATE TABLE IF NOT EXISTS vip_users (user_id INTEGER PRIMARY KEY)")
-    cursor.execute("CREATE TABLE IF NOT EXISTS force_channels (channel TEXT PRIMARY KEY)")
-    cursor.execute("""CREATE TABLE IF NOT EXISTS service_settings
-                      (service_id TEXT PRIMARY KEY, quantity INTEGER)""")
-    conn.commit()
-
-    # ================== أدوات ==================
-    def is_admin(uid): return uid == ADMIN_ID
-
-    def admin_menu():
-        kb = types.InlineKeyboardMarkup(row_width=2)
-        kb.add(
-            types.InlineKeyboardButton("🛑 حظر مستخدم", callback_data="ban"),
-            types.InlineKeyboardButton("✅ فك الحظر", callback_data="unban"),
-            types.InlineKeyboardButton("📢 إذاعة", callback_data="broadcast"),
-            types.InlineKeyboardButton("⭐ VIP", callback_data="vip"),
-            types.InlineKeyboardButton("⚙️ الإعدادات", callback_data="settings"),
-            types.InlineKeyboardButton("📊 إحصائيات", callback_data="stats")
-        )
-        return kb
-
-    # ================== /admin ==================
     @bot.message_handler(commands=["admin"])
-    def admin_cmd(msg):
-        if not is_admin(msg.from_user.id): return
-        bot.send_message(msg.chat.id, "لوحة تحكم الوالي والمطور:", reply_markup=admin_menu())
+    def admin_panel(message):
+        if message.from_user.id != 5581457665:  # رقم المالك
+            return
 
-    # ================== الأزرار ==================
-    @bot.callback_query_handler(func=lambda c: c.data in ["ban","unban","broadcast","vip","settings","stats"])
+        markup = types.InlineKeyboardMarkup(row_width=2)
+        markup.add(
+            types.InlineKeyboardButton("🔒 حظر مستخدم", callback_data="admin_ban"),
+            types.InlineKeyboardButton("🔓 رفع الحظر", callback_data="admin_unban"),
+            types.InlineKeyboardButton("⭐️ VIP", callback_data="admin_vip"),
+            types.InlineKeyboardButton("📢 إذاعة", callback_data="admin_broadcast"),
+            types.InlineKeyboardButton("➕ إضافة قناة", callback_data="admin_add_channel"),
+            types.InlineKeyboardButton("📊 احصائيات", callback_data="admin_stats")
+        )
+        bot.send_message(message.chat.id, "لوحة التحكم الخاصة بالمالك والسلطان الوالي:", reply_markup=markup)
+
+    @bot.callback_query_handler(func=lambda call: call.data.startswith("admin_"))
     def admin_actions(call):
-        if not is_admin(call.from_user.id): return
-        bot.answer_callback_query(call.id)
+        if call.from_user.id != 5581457665:
+            return
 
-        if call.data == "ban":
-            m = bot.send_message(call.message.chat.id, "ارسل ID المستخدم للحظر:")
-            bot.register_next_step_handler(m, do_ban)
+        action = call.data.split("_")[1]
 
-        elif call.data == "unban":
-            m = bot.send_message(call.message.chat.id, "ارسل ID المستخدم لفك الحظر:")
-            bot.register_next_step_handler(m, do_unban)
-
-        elif call.data == "broadcast":
-            m = bot.send_message(call.message.chat.id, "..ارسل رسالة الإذاعة:")
-            bot.register_next_step_handler(m, do_broadcast)
-
-        elif call.data == "vip":
-            kb = types.InlineKeyboardMarkup()
-            kb.add(
-                types.InlineKeyboardButton("➕ إضافة VIP", callback_data="vip_add"),
-                types.InlineKeyboardButton("➖ حذف VIP", callback_data="vip_del")
-            )
-            bot.send_message(call.message.chat.id, "نظام VIP💎:", reply_markup=kb)
-
-        elif call.data == "settings":
-            kb = types.InlineKeyboardMarkup()
-            kb.add(
-                types.InlineKeyboardButton("📦 كمية الطلب", callback_data="set_qty"),
-                types.InlineKeyboardButton("📢 قنوات الاشتراك", callback_data="channels")
-            )
-            bot.send_message(call.message.chat.id, "الإعدادات:", reply_markup=kb)
-
-        elif call.data == "stats":
+        if action == "ban":
+            msg = bot.send_message(call.message.chat.id, "ادخل ايدي المستخدم لحظره:")
+            bot.register_next_step_handler(msg, ban_user)
+        elif action == "unban":
+            msg = bot.send_message(call.message.chat.id, "ادخل ايدي المستخدم لرفع الحظر:")
+            bot.register_next_step_handler(msg, unban_user)
+        elif action == "vip":
+            msg = bot.send_message(call.message.chat.id, "ادخل ايدي المستخدم لمنحه VIP:")
+            bot.register_next_step_handler(msg, vip_user)
+        elif action == "broadcast":
+            msg = bot.send_message(call.message.chat.id, "اكتب الرسالة للإرسال لجميع المستخدمين:")
+            bot.register_next_step_handler(msg, broadcast_message)
+        elif action == "add":
+            msg = bot.send_message(call.message.chat.id, "ادخل معرف القناة لإضافتها للاشتراك الاجباري:")
+            bot.register_next_step_handler(msg, add_channel)
+        elif action == "stats":
             cursor.execute("SELECT COUNT(*) FROM users")
-            users = cursor.fetchone()[0]
-            cursor.execute("SELECT COUNT(*) FROM vip_users")
-            vip = cursor.fetchone()[0]
-            cursor.execute("SELECT COUNT(*) FROM banned_users")
-            banned = cursor.fetchone()[0]
-            bot.send_message(call.message.chat.id, f"{users}\n{vip}\n{banned}")
+            total = cursor.fetchone()[0]
+            bot.send_message(call.message.chat.id, f"📊 عدد المستخدمين: {total}")
 
-    # ================== VIP ==================
-    @bot.callback_query_handler(func=lambda c: c.data.startswith("vip_"))
-    def vip_actions(call):
-        if not is_admin(call.from_user.id): return
-        m = bot.send_message(call.message.chat.id, "ارسل ID المستخدم:")
-        if call.data == "vip_add":
-            bot.register_next_step_handler(m, vip_add)
-        else:
-            bot.register_next_step_handler(m, vip_del)
+    # ======== دوال الإدارة ========
+    def ban_user(message):
+        try:
+            user_id = int(message.text)
+            cursor.execute("UPDATE users SET banned=1 WHERE user_id=?", (user_id,))
+            conn.commit()
+            bot.send_message(message.chat.id, f"✅😂 تم حظر المستخدم {user_id}")
+        except:
+            bot.send_message(message.chat.id, "❌ خطأ في الإدخال.")
 
-    def vip_add(m):
-        cursor.execute("INSERT OR IGNORE INTO vip_users VALUES (?)", (int(m.text),))
-        conn.commit()
-        bot.send_message(m.chat.id, "✅😑تمت الإضافة VIP")
+    def unban_user(message):
+        try:
+            user_id = int(message.text)
+            cursor.execute("UPDATE users SET banned=0 WHERE user_id=?", (user_id,))
+            conn.commit()
+            bot.send_message(message.chat.id, f"✅😑 تم رفع الحظر عن المستخدم {user_id}")
+        except:
+            bot.send_message(message.chat.id, "❌ خطأ في الإدخال.")
 
-    def vip_del(m):
-        cursor.execute("DELETE FROM vip_users WHERE user_id=?", (int(m.text),))
-        conn.commit()
-        bot.send_message(m.chat.id, "😂✅تم حذف VIP")
+    def vip_user(message):
+        try:
+            user_id = int(message.text)
+            cursor.execute("UPDATE users SET vip=1 WHERE user_id=?", (user_id,))
+            conn.commit()
+            bot.send_message(message.chat.id, f"✅💎 تم منح VIP للمستخدم {user_id}")
+        except:
+            bot.send_message(message.chat.id, "❌ خطأ في الإدخال.")
 
-    # ================== حظر ==================
-    def do_ban(m):
-        cursor.execute("INSERT OR IGNORE INTO banned_users VALUES (?)", (int(m.text),))
-        conn.commit()
-        bot.send_message(m.chat.id, "😂✅تم الحظر")
-
-    def do_unban(m):
-        cursor.execute("DELETE FROM banned_users WHERE user_id=?", (int(m.text),))
-        conn.commit()
-        bot.send_message(m.chat.id, "✅تم فك الحظر")
-
-    # ================== إذاعة ==================
-    def do_broadcast(m):
+    def broadcast_message(message):
         cursor.execute("SELECT user_id FROM users")
-        for (uid,) in cursor.fetchall():
+        users = cursor.fetchall()
+        count = 0
+        for (user_id,) in users:
             try:
-                bot.send_message(uid, m.text)
-                time.sleep(0.05)
+                bot.send_message(user_id, message.text)
+                count += 1
             except:
-                pass
-        bot.send_message(m.chat.id, "✅تمت الإذاعة")
+                continue
+        bot.send_message(message.chat.id, f"✅ تم إرسال الرسالة إلى {count} مستخدمين.")
 
-    # ================== الإعدادات ==================
-    @bot.callback_query_handler(func=lambda c: c.data in ["set_qty","channels"])
-    def settings_actions(call):
-        if call.data == "set_qty":
-            m = bot.send_message(call.message.chat.id, "ارسل: service_id quantity")
-            bot.register_next_step_handler(m, set_qty)
-
-        elif call.data == "channels":
-            kb = types.InlineKeyboardMarkup()
-            kb.add(
-                types.InlineKeyboardButton("➕ إضافة قناة", callback_data="ch_add"),
-                types.InlineKeyboardButton("➖ حذف قناة", callback_data="ch_del")
-            )
-            bot.send_message(call.message.chat.id, "قنوات الاشتراك:", reply_markup=kb)
-
-    def set_qty(m):
-        sid, qty = m.text.split()
-        cursor.execute("INSERT OR REPLACE INTO service_settings VALUES (?,?)", (sid, int(qty)))
-        conn.commit()
-        bot.send_message(m.chat.id, "تم التحديث")
-
-    @bot.callback_query_handler(func=lambda c: c.data in ["ch_add","ch_del"])
-    def channel_actions(call):
-        m = bot.send_message(call.message.chat.id, "ارسل @channel")
-        if call.data == "ch_add":
-            bot.register_next_step_handler(m, ch_add)
+    def add_channel(message):
+        channel = message.text.strip()
+        if channel.startswith("@"):
+            mandatory_channels.append(channel)
         else:
-            bot.register_next_step_handler(m, ch_del)
-
-    def ch_add(m):
-        cursor.execute("INSERT OR IGNORE INTO force_channels VALUES (?)", (m.text,))
-        conn.commit()
-        bot.send_message(m.chat.id, "✅تمت الإضافة")
-
-    def ch_del(m):
-        cursor.execute("DELETE FROM force_channels WHERE channel=?", (m.text,))
-        conn.commit()
-        bot.send_message(m.chat.id, "👍❌تم الحذف")
+            mandatory_channels.append(f"@{channel}")
+        bot.send_message(message.chat.id, f"✅ تم إضافة القناة {channel} للاشتراك الاجباري.")
