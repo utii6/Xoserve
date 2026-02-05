@@ -6,7 +6,7 @@ import telebot
 from flask import Flask
 from threading import Thread
 from telebot import types
-import admin_panel.py
+import admin_panel
 # --- إعداد الخادم لإبقاء البوت حياً ---
 app = Flask('')
 @app.route('/')
@@ -124,4 +124,10 @@ def process_api_request(message, service_id, column_name):
 
 if __name__ == "__main__":
     keep_alive()
-    bot.infinity_polling(timeout=20, long_polling_timeout=10)
+   WEBHOOK_URL = os.getenv("WEBHOOK_URL")  # مثال: https://your-app.onrender.com
+
+bot.remove_webhook()
+bot.set_webhook(url=WEBHOOK_URL)
+
+if __name__ == "__main__":
+    keep_alive() 
