@@ -45,7 +45,7 @@ conn.commit()
 
 def get_total_users():
     cursor.execute('SELECT COUNT(*) FROM users')
-    return 8746 + cursor.fetchone()[0]
+    return 12947 + cursor.fetchone()[0]
 
 def is_subscribed(user_id):
     try:
