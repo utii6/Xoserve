@@ -164,6 +164,8 @@ def process_api_request(message, service_id, column_name):
 admin_panel.register(bot, cursor, conn)
 
 if __name__ == "__main__":
-    keep_alive()
-    bot.remove_webhook()  # حذف أي Webhook سابق
-    bot.infinity_polling(timeout=20, long_polling_timeout=10)
+    # مسح أي تضارب قديم قبل البدء
+    bot.remove_webhook()
+    time.sleep(1) # انتظار ثانية للتأكد من الإغلاق
+    print("🚀 تم حل التضارب.. البوت يعمل الآن!")
+    bot.infinity_polling(timeout=10, long_polling_timeout=5)
