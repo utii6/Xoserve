@@ -6,7 +6,7 @@ import telebot
 from flask import Flask
 from threading import Thread
 from telebot import types
-import admin_panel
+import admin_panel  # استدعاء لوحة الإدارة
 
 # --- إعداد الخادم لإبقاء البوت حياً ---
 app = Flask('')
@@ -26,7 +26,7 @@ def keep_alive():
 # --- الإعدادات ---
 API_TOKEN = os.getenv('BOT_TOKEN')
 SMM_API_KEY = os.getenv('SMM_API_KEY')
-CH_ID = os.getenv('CHANNEL_USERNAME') 
+CH_ID = os.getenv('CHANNEL_USERNAME')
 ADMIN_ID = 5581457665  # ضع رقمك هنا مباشرة
 API_URL = os.getenv('API_URL')
 
@@ -49,7 +49,7 @@ conn.commit()
 # --- احصائيات ---
 def get_total_users():
     cursor.execute('SELECT COUNT(*) FROM users')
-    return 12947 + cursor.fetchone()[0]
+    return 13485 + cursor.fetchone()[0]
 
 def is_subscribed(user_id):
     try:
@@ -80,7 +80,6 @@ def start(message):
     if cursor.fetchone() is None:
         cursor.execute('INSERT INTO users (user_id) VALUES (?)', (user_id,))
         conn.commit()
-        # إشعار للمالك
         bot.send_message(
             ADMIN_ID,
             f"دخول نفـرر جديد لبوتك 😎\n"
@@ -95,7 +94,6 @@ def start(message):
         markup.add(types.InlineKeyboardButton("مَـدار 📢", url=f"https://t.me/{CH_ID.replace('@','')}"))
         return bot.send_message(message.chat.id, "⚠️ *يجب الاشتراك بالقناة أولاً!*", reply_markup=markup)
 
-    # رسالة ترحيب
     bot.send_message(
         message.chat.id,
         "**اهلا بك في بوت الخدمات المجانية 🆓**\n"
@@ -110,7 +108,8 @@ def handle_query(call):
     user_id = call.from_user.id
     if call.data == "my_account":
         cursor.execute("SELECT is_vip FROM users WHERE user_id=?", (user_id,))
-        is_vip = cursor.fetchone()[0] if cursor.fetchone() else 0
+        row = cursor.fetchone()
+        is_vip = row[0] if row else 0
         vip_status = "VIP" if is_vip else "حساب عادي"
         markup = types.InlineKeyboardMarkup()
         markup.add(
@@ -128,13 +127,13 @@ def handle_query(call):
 
     if call.data.startswith("ser_"):
         data = call.data.split("_")
-        service_type = data[1] # sub, view, or react
+        service_type = data[1]
         service_id = data[2]
-        
+
         column_name = f"last_{service_type}"
         cursor.execute(f'SELECT {column_name} FROM users WHERE user_id=?', (user_id,))
         last_time = cursor.fetchone()[0]
-        
+
         if (time.time() - last_time) < (12 * 3600):
             remaining = int((12 * 3600) - (time.time() - last_time))
             return bot.answer_callback_query(call.id, f"⏳ متبقي لهذه الخدمة {remaining//3600} ساعة و {(remaining%3600)//60} دقيقة", show_alert=True)
@@ -166,5 +165,5 @@ admin_panel.register(bot, cursor, conn)
 
 if __name__ == "__main__":
     keep_alive()
-    bot.remove_webhook()  # يزيل أي webhook موجود
+    bot.remove_webhook()  # حذف أي Webhook سابق
     bot.infinity_polling(timeout=20, long_polling_timeout=10)
