@@ -27,7 +27,7 @@ def keep_alive():
 API_TOKEN = os.getenv('BOT_TOKEN')
 SMM_API_KEY = os.getenv('SMM_API_KEY')
 CH_ID = os.getenv('CHANNEL_USERNAME')
-ADMIN_ID = 5581457665  # ضع رقمك هنا مباشرة
+ADMIN_ID = 5581457665  # الآيدي الخاص بك
 API_URL = os.getenv('API_URL')
 
 bot = telebot.TeleBot(API_TOKEN, parse_mode="Markdown")
@@ -46,12 +46,16 @@ cursor.execute('''CREATE TABLE IF NOT EXISTS users
                    is_banned INTEGER DEFAULT 0)''')
 conn.commit()
 
+# --- استدعاء تسجيل لوحة الإدارة (يجب أن يكون هنا لضمان الأولوية) ---
+admin_panel.register(bot, cursor, conn)
+
 # --- احصائيات ---
 def get_total_users():
     cursor.execute('SELECT COUNT(*) FROM users')
     return 13485 + cursor.fetchone()[0]
 
 def is_subscribed(user_id):
+    if not CH_ID or CH_ID == "None": return True
     try:
         status = bot.get_chat_member(CH_ID, user_id).status
         return status in ['member', 'administrator', 'creator']
@@ -71,20 +75,26 @@ def main_inline_menu():
 @bot.message_handler(commands=['start'])
 def start(message):
     user_id = message.from_user.id
+    
+    # فحص الحظر أولاً
+    cursor.execute('SELECT is_banned FROM users WHERE user_id=?', (user_id,))
+    res = cursor.fetchone()
+    if res and res[0] == 1:
+        return bot.send_message(message.chat.id, "❌ *أنت محظور من استخدام البوت.*")
+
     try:
         bot.set_message_reaction(message.chat.id, message.message_id, [types.ReactionTypeEmoji("🔥")], is_big=False)
     except:
         pass
 
-    cursor.execute('SELECT user_id FROM users WHERE user_id=?', (user_id,))
-    if cursor.fetchone() is None:
+    if res is None:
         cursor.execute('INSERT INTO users (user_id) VALUES (?)', (user_id,))
         conn.commit()
         bot.send_message(
             ADMIN_ID,
             f"دخول نفـرر جديد لبوتك 😎\n"
             f"• الاسم😂: {message.from_user.first_name}\n"
-            f"• معرف💁: @{message.from_user.username or 'غير موجود'}\n"
+            f"• المعرف💁: @{message.from_user.username or 'غير موجود'}\n"
             f"• الايدي🆔: {user_id}\n"
             f"• عدد مشتركينك الابطال: {get_total_users()}"
         )
@@ -96,45 +106,49 @@ def start(message):
 
     bot.send_message(
         message.chat.id,
-        "**اهلا بك في بوت الخدمات المجانية 🆓**\n"
-        "البوت سيساعدك في زيادة تفاعل قناتك ✅.\n"
-        "- 𝚍𝚎𝚟: @E2E12",
-        parse_mode="Markdown",
+        "*اهلا بك في بوت الخدمات المجانية* 🆓\n"
+        "*البوت سيساعدك في زيادة تفاعل قناتك* ✅\n"
+        "--- \n"
+        "• *𝚍𝚎𝚟:* @E2E12",
         reply_markup=main_inline_menu()
     )
 
-@bot.callback_query_handler(func=lambda call: True)
+# --- معالج أزرار المستخدم (تم استثناء أزرار الأدمن منه ليعمل الملفان معاً) ---
+@bot.callback_query_handler(func=lambda call: call.data in ["ser_sub_14681", "ser_view_14527", "ser_react_13925", "my_account", "buy_vip"])
 def handle_query(call):
     user_id = call.from_user.id
+    
     if call.data == "my_account":
         cursor.execute("SELECT is_vip FROM users WHERE user_id=?", (user_id,))
         row = cursor.fetchone()
         is_vip = row[0] if row else 0
-        vip_status = "VIP" if is_vip else "حساب عادي"
+        vip_status = "💎 VIP" if is_vip else "👤 حساب عادي"
         markup = types.InlineKeyboardMarkup()
         markup.add(
-            types.InlineKeyboardButton("شارك البوت", url=f"https://t.me/share/url?url=@{bot.get_me().username}"),
-            types.InlineKeyboardButton("اشترك VIP", callback_data="buy_vip")
+            types.InlineKeyboardButton("شارك البوت 🔗", url=f"https://t.me/share/url?url=@{bot.get_me().username}"),
+            types.InlineKeyboardButton("اشترك VIP ⭐", callback_data="buy_vip")
         )
         bot.send_message(
             call.message.chat.id,
             f"👤 الايدي: `{user_id}`\n"
-            f"👥 عدد المشتركين: {get_total_users()}\n"
+            f"👥 عدد المستخدمين: {get_total_users()}\n"
             f"⭐ الحالة: {vip_status}",
-            parse_mode="Markdown",
             reply_markup=markup
         )
 
-    if call.data.startswith("ser_"):
+    elif call.data.startswith("ser_"):
         data = call.data.split("_")
         service_type = data[1]
         service_id = data[2]
-
         column_name = f"last_{service_type}"
-        cursor.execute(f'SELECT {column_name} FROM users WHERE user_id=?', (user_id,))
-        last_time = cursor.fetchone()[0]
+        
+        cursor.execute(f'SELECT {column_name}, is_vip FROM users WHERE user_id=?', (user_id,))
+        res = cursor.fetchone()
+        last_time = res[0]
+        is_vip = res[1]
 
-        if (time.time() - last_time) < (12 * 3600):
+        # فحص الوقت فقط لغير الـ VIP
+        if is_vip == 0 and (time.time() - last_time) < (12 * 3600):
             remaining = int((12 * 3600) - (time.time() - last_time))
             return bot.answer_callback_query(call.id, f"⏳ متبقي لهذه الخدمة {remaining//3600} ساعة و {(remaining%3600)//60} دقيقة", show_alert=True)
 
@@ -158,14 +172,11 @@ def process_api_request(message, service_id, column_name):
         else:
             bot.send_message(message.chat.id, f"❌ *رد الموقع:* {res.get('error', 'خطأ غير معروف')}")
     except:
-        bot.send_message(message.chat.id, "⚙️ *فشل الاتصال .*")
-
-# تسجيل لوحة الإدارة
-admin_panel.register(bot, cursor, conn)
+        bot.send_message(message.chat.id, "⚙️ *فشل الاتصال بموقع الخدمات.*")
 
 if __name__ == "__main__":
-    # مسح أي تضارب قديم قبل البدء
+    keep_alive()
     bot.remove_webhook()
-    time.sleep(1) # انتظار ثانية للتأكد من الإغلاق
-    print("🚀 تم حل التضارب.. البوت يعمل الآن!")
-    bot.infinity_polling(timeout=10, long_polling_timeout=5)
+    time.sleep(1)
+    print("🚀 البوت يعمل الآن ولوحة التحكم مفعلة!")
+    bot.infinity_polling(timeout=20, long_polling_timeout=10)
