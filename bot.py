@@ -28,7 +28,8 @@ CH_ID = os.getenv("CHANNEL_USERNAME")
 ADMIN_ID = 5581457665  # ايديك مباشرة
 
 bot = telebot.TeleBot(API_TOKEN, parse_mode="Markdown")
-
+import admin_panel
+admin_panel.register(bot, cursor, conn)
 # ================= Database =================
 conn = sqlite3.connect("users.db", check_same_thread=False)
 cursor = conn.cursor()
