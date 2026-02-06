@@ -21,12 +21,16 @@ def register(bot, cursor, conn):
         )
         bot.send_message(message.chat.id, "لوحة التحكم الخاصة بالوالي السلطان:", reply_markup=markup)
 
+        # التعديل: جعل هذا المعالج يستجيب فقط لأزرار الإدارة المحددة
     @bot.callback_query_handler(func=lambda call: call.data in ["ban_user", "unban_user", "vip_user", "broadcast_msg", "add_channel", "stats"])
     def admin_actions(call):
         if call.from_user.id != OWNER_ID:
+            # إذا لم يكن المالك، لا تفعل شيئاً واترك المجال للمعالجات الأخرى
             return
 
         chat_id = call.message.chat.id
+        # ... بقية الكود كما هو دون تغيير ...
+
 
         if call.data == "ban_user":
             msg = bot.send_message(chat_id, "ادخل ايدي المستخدم لحظره:")
