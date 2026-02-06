@@ -21,16 +21,15 @@ def register(bot, cursor, conn):
         )
         bot.send_message(message.chat.id, "لوحة التحكم الخاصة بالوالي السلطان:", reply_markup=markup)
 
-        # التعديل: جعل هذا المعالج يستجيب فقط لأزرار الإدارة المحددة
-    @bot.callback_query_handler(func=lambda call: call.data in ["ban_user", "unban_user", "vip_user", "broadcast_msg", "add_channel", "stats"])
+    # التعديل الجوهري: حصر الاستجابة في هذه القائمة فقط
+    admin_callbacks = ["ban_user", "unban_user", "vip_user", "broadcast_msg", "add_channel", "stats"]
+    
+    @bot.callback_query_handler(func=lambda call: call.data in admin_callbacks)
     def admin_actions(call):
         if call.from_user.id != OWNER_ID:
-            # إذا لم يكن المالك، لا تفعل شيئاً واترك المجال للمعالجات الأخرى
             return
 
         chat_id = call.message.chat.id
-        # ... بقية الكود كما هو دون تغيير ...
-
 
         if call.data == "ban_user":
             msg = bot.send_message(chat_id, "ادخل ايدي المستخدم لحظره:")
@@ -50,39 +49,36 @@ def register(bot, cursor, conn):
         elif call.data == "stats":
             cursor.execute("SELECT COUNT(*) FROM users")
             total = cursor.fetchone()[0]
-            bot.send_message(chat_id, f"📊 عدد المستخدمين: {total}")
+            bot.send_message(chat_id, f"📊 عدد المستخدمين الحقيقي: {total}")
 
     def update_user_status(message, action):
         try:
             user_id = int(message.text)
             if action == "ban":
                 cursor.execute("UPDATE users SET is_banned=1 WHERE user_id=?", (user_id,))
-                bot.send_message(message.chat.id, f"✅ تم حظر المستخدم {user_id}")
+                bot.send_message(message.chat.id, f"✅ تم حظر {user_id}")
             elif action == "unban":
                 cursor.execute("UPDATE users SET is_banned=0 WHERE user_id=?", (user_id,))
-                bot.send_message(message.chat.id, f"✅ تم رفع الحظر عن المستخدم {user_id}")
+                bot.send_message(message.chat.id, f"✅ تم رفع حظر {user_id}")
             elif action == "vip":
                 cursor.execute("UPDATE users SET is_vip=1 WHERE user_id=?", (user_id,))
-                bot.send_message(message.chat.id, f"💎 تم منح VIP للمستخدم {user_id}")
+                bot.send_message(message.chat.id, f"💎 تم منح VIP لـ {user_id}")
             conn.commit()
         except:
-            bot.send_message(message.chat.id, "❌ خطأ في الإدخال.")
+            bot.send_message(message.chat.id, "❌ خطأ في الإيدي.")
 
     def broadcast_message(message):
         cursor.execute("SELECT user_id FROM users")
         users = cursor.fetchall()
         count = 0
-        for (user_id,) in users:
+        for (u_id,) in users:
             try:
-                bot.send_message(user_id, message.text)
+                bot.send_message(u_id, message.text)
                 count += 1
-            except:
-                continue
-        bot.send_message(message.chat.id, f"✅ تم إرسال الرسالة إلى {count} مستخدم.")
+            except: continue
+        bot.send_message(message.chat.id, f"✅ تم الإرسال لـ {count} مستخدم.")
 
     def add_channel(message):
-        channel = message.text.strip()
-        if not channel.startswith("@"):
-            channel = f"@{channel}"
-        mandatory_channels.append(channel)
-        bot.send_message(message.chat.id, f"✅ تم إضافة القناة {channel} للاشتراك الإجباري.")
+        ch = message.text.strip()
+        mandatory_channels.append(ch if ch.startswith("@") else f"@{ch}")
+        bot.send_message(message.chat.id, f"✅ تمت إضافة {ch}")
