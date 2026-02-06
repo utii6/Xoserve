@@ -3,225 +3,209 @@ import time
 import sqlite3
 import requests
 import telebot
-from flask import Flask, request
+from flask import Flask
 from threading import Thread
 from telebot import types
-import admin_panel
 
-# ================== Flask ==================
+# ================= Flask (Keep Alive) =================
 app = Flask(__name__)
 
-@app.route("/")
+@app.route('/')
 def home():
-    return "البوت يعمل بنجاح ✅"
+    return "BOT IS RUNNING"
 
-# ================== الإعدادات ==================
+def run():
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
+
+def keep_alive():
+    Thread(target=run, daemon=True).start()
+
+# ================= Config =================
 API_TOKEN = os.getenv("BOT_TOKEN")
 SMM_API_KEY = os.getenv("SMM_API_KEY")
-CH_ID = os.getenv("CHANNEL_USERNAME")
 API_URL = os.getenv("API_URL")
-WEBHOOK_URL = os.getenv("WEBHOOK_URL")  # مثال: https://your-app.onrender.com
+CH_ID = os.getenv("CHANNEL_USERNAME")
+ADMIN_ID = 5581457665  # ايديك مباشرة
 
-# ================== Telegram Bot ==================
 bot = telebot.TeleBot(API_TOKEN, parse_mode="Markdown")
 
-# ================== قاعدة البيانات ==================
-db_path = os.path.join(os.getcwd(), "users.db")
-conn = sqlite3.connect(db_path, check_same_thread=False)
+# ================= Database =================
+conn = sqlite3.connect("users.db", check_same_thread=False)
 cursor = conn.cursor()
 
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS users (
     user_id INTEGER PRIMARY KEY,
+    is_vip INTEGER DEFAULT 0,
+    is_banned INTEGER DEFAULT 0,
     last_sub REAL DEFAULT 0,
     last_view REAL DEFAULT 0,
-    last_react REAL DEFAULT 0,
-    vip INTEGER DEFAULT 0,
-    banned INTEGER DEFAULT 0
+    last_react REAL DEFAULT 0
 )
 """)
 conn.commit()
 
-# ================== لوحة الأدمن ==================
-admin_panel.register(bot, cursor, conn)
-
-# ================== وظائف ==================
+# ================= Helpers =================
 def get_total_users():
     cursor.execute("SELECT COUNT(*) FROM users")
-    return 12947 + cursor.fetchone()[0]
+    return 13473 + cursor.fetchone()[0]
 
 def is_subscribed(user_id):
     try:
-        status = bot.get_chat_member(CH_ID, user_id).status
-        return status in ["member", "administrator", "creator"]
+        s = bot.get_chat_member(CH_ID, user_id).status
+        return s in ["member", "administrator", "creator"]
     except:
         return False
 
 def is_vip(user_id):
-    cursor.execute("SELECT vip FROM users WHERE user_id=?", (user_id,))
-    row = cursor.fetchone()
-    return row and row[0] == 1
+    cursor.execute("SELECT is_vip FROM users WHERE user_id=?", (user_id,))
+    r = cursor.fetchone()
+    return r and r[0] == 1
 
 def is_banned(user_id):
-    cursor.execute("SELECT banned FROM users WHERE user_id=?", (user_id,))
-    row = cursor.fetchone()
-    return row and row[0] == 1
+    cursor.execute("SELECT is_banned FROM users WHERE user_id=?", (user_id,))
+    r = cursor.fetchone()
+    return r and r[0] == 1
 
-def main_inline_menu():
-    markup = types.InlineKeyboardMarkup(row_width=2)
-    markup.add(
+# ================= Keyboards =================
+def main_menu():
+    m = types.InlineKeyboardMarkup(row_width=2)
+    m.add(
         types.InlineKeyboardButton("👥 زيادة مشتركين", callback_data="ser_sub_14681"),
         types.InlineKeyboardButton("👀 زيادة مشاهدات", callback_data="ser_view_14527"),
         types.InlineKeyboardButton("❤️ تفاعلات", callback_data="ser_react_13925"),
-        types.InlineKeyboardButton("👤 حسابي", callback_data="my_account")
+        types.InlineKeyboardButton("👤 حسابي", callback_data="my_account"),
     )
-    return markup
+    return m
 
-# ================== Handlers ==================
+def account_menu(user_id):
+    vip_status = "VIP 🌟" if is_vip(user_id) else "عادي"
+    m = types.InlineKeyboardMarkup()
+    m.add(
+        types.InlineKeyboardButton(
+            "🔗 مشاركة البوت",
+            url="https://t.me/share/url?url=@t3tbbot"
+        )
+    )
+    m.add(
+        types.InlineKeyboardButton(
+            "🌟 اشترك VIP",
+            callback_data="vip_info"
+        )
+    )
+    return vip_status, m
+
+# ================= Start =================
 @bot.message_handler(commands=["start"])
 def start(message):
     user_id = message.from_user.id
 
-    if is_banned(user_id):
-        return  # المستخدم محظور
+    cursor.execute("SELECT 1 FROM users WHERE user_id=?", (user_id,))
+    exists = cursor.fetchone()
 
-    try:
-        bot.set_message_reaction(
-            message.chat.id,
-            message.message_id,
-            [types.ReactionTypeEmoji("🔥")],
-            is_big=False
-        )
-    except:
-        pass
-
-    cursor.execute("SELECT user_id FROM users WHERE user_id=?", (user_id,))
-    if cursor.fetchone() is None:
+    if not exists:
         cursor.execute("INSERT INTO users (user_id) VALUES (?)", (user_id,))
         conn.commit()
-        # إشعار المالك بشكل جديد
+
         bot.send_message(
-            5581457665,  # رقمك
-            f"دخول نفـرر جديد لبوتك 😎\n"
-            f"• الاسم😂: {message.from_user.first_name}\n"
-            f"• معرف💁: @{message.from_user.username if message.from_user.username else 'لا يوجد'}\n"
-            f"• الايدي🆔: {user_id}\n"
-            f"• عدد مشتركينك الابطال: {get_total_users()}"
+            ADMIN_ID,
+            f"""دخول نفـرر جديد لبوتك 😎
+• الاسم😂:: {message.from_user.first_name}
+• معرف💁: @{message.from_user.username or 'بدون'}
+• الايدي🆔: {user_id}
+• عدد مشتركينك الابطال: {get_total_users()}"""
         )
+
+    if is_banned(user_id):
+        return bot.send_message(message.chat.id, "🚫😂 *أنت محظور من استخدام البوت*")
 
     if not is_subscribed(user_id):
-        markup = types.InlineKeyboardMarkup()
-        markup.add(
-            types.InlineKeyboardButton(
-                " مَـدار 📢",
-                url=f"https://t.me/{CH_ID.replace('@','')}"
-            )
-        )
-        return bot.send_message(
-            message.chat.id,
-            "⚠️ *يجب الاشتراك بالقناة أولاً!*",
-            reply_markup=markup
-        )
+        m = types.InlineKeyboardMarkup()
+        m.add(types.InlineKeyboardButton("📢مَـدار", url=f"https://t.me/{CH_ID.replace('@','')}"))
+        return bot.send_message(message.chat.id, "⚠️ اشترك بالقناة أولاً", reply_markup=m)
 
-    # رسالة الترحيب الجديدة بالخط الغامق
-    welcome_msg = (
-        "**اهلا بك في بوت الخدمات المجانية 🆓**\n"
-        "البوت سيساعدك في زيادة تفاعل قناتك ✅.\n"
-        "- 𝚍𝚎𝚟: @E2E12"
-    )
     bot.send_message(
         message.chat.id,
-        welcome_msg,
-        parse_mode="Markdown",
-        reply_markup=main_inline_menu()
+        "**اهلا بك في بوت الخدمات المجانية 🆓**\n"
+        "**البوت سيساعدك في زيادة تفاعل قناتك ✅**\n"
+        "**- 𝚍𝚎𝚟: @E2E12**",
+        reply_markup=main_menu()
     )
 
-@bot.callback_query_handler(func=lambda call: True)
-def handle_query(call):
+# ================= Callbacks =================
+@bot.callback_query_handler(func=lambda c: True)
+def callbacks(call):
     user_id = call.from_user.id
 
     if is_banned(user_id):
-        return  # المستخدم محظور
+        return bot.answer_callback_query(call.id, "😂🚫 محظور", show_alert=True)
 
     if call.data == "my_account":
+        status, markup = account_menu(user_id)
         return bot.send_message(
             call.message.chat.id,
-            f"👤 *حسابك:*\n• ايدي: `{user_id}`\n• المشتركين في البوت: {get_total_users()}"
+            f"👤 حسابك:\n"
+            f"• الايدي: `{user_id}`\n"
+            f"• عدد المشتركين: {get_total_users()}\n"
+            f"• نوع الحساب: {status}",
+            reply_markup=markup
+        )
+
+    if call.data == "vip_info":
+        return bot.send_message(
+            call.message.chat.id,
+            "🌟 **اشتراك VIP**\n\n"
+            "• بدون انتظار ⏱\n"
+            "• كميات أكبر 🔥\n"
+            "• أولوية عالية 🚀\n\n"
+            "💰 السعر: 50 نجمة / يوم\n"
+            "📩 راسلني: @e2e12"
         )
 
     if call.data.startswith("ser_"):
-        _, service_type, service_id = call.data.split("_")
-        column_name = f"last_{service_type}"
-
-        cursor.execute(f"SELECT {column_name} FROM users WHERE user_id=?", (user_id,))
-        last_time = cursor.fetchone()[0]
-
-        # VIP يتجاوز الكولداون
         if not is_vip(user_id):
-            if (time.time() - last_time) < (12 * 3600):
-                remaining = int((12 * 3600) - (time.time() - last_time))
-                return bot.answer_callback_query(
-                    call.id,
-                    f"⏳ متبقي {remaining//3600} ساعة و {(remaining%3600)//60} دقيقة",
-                    show_alert=True
-                )
+            column = f"last_{call.data.split('_')[1]}"
+            cursor.execute(f"SELECT {column} FROM users WHERE user_id=?", (user_id,))
+            last = cursor.fetchone()[0] or 0
+            if time.time() - last < 43200:
+                return bot.answer_callback_query(call.id, "⏳ انتظر انتهاء الوقت", show_alert=True)
 
-        msg = bot.send_message(call.message.chat.id, "✅ *ارسل الآن رابط الخدمة المطلوبة:*")
-        bot.register_next_step_handler(msg, process_api_request, service_id, column_name)
+        service_id = call.data.split("_")[2]
+        msg = bot.send_message(call.message.chat.id, "🔗 ارسل الرابط")
+        bot.register_next_step_handler(msg, process_order, service_id)
 
-def process_api_request(message, service_id, column_name):
-    user_id = message.from_user.id
-
-    if is_banned(user_id):
-        return  # المستخدم محظور
-
+# ================= Orders =================
+def process_order(message, service_id):
     if not message.text.startswith("http"):
-        return bot.send_message(message.chat.id, "❌ *رابط غير صحيح.*")
+        return bot.send_message(message.chat.id, "❌ رابط غير صالح")
+
+    qty = 1000 if is_vip(message.from_user.id) else 100
 
     payload = {
         "key": SMM_API_KEY,
         "action": "add",
         "service": service_id,
         "link": message.text,
-        "quantity": 100
+        "quantity": qty
     }
 
     try:
-        response = requests.post(API_URL, data=payload, timeout=10)
-        res = response.json()
-
-        if "order" in res:
-            cursor.execute(
-                f"UPDATE users SET {column_name}=? WHERE user_id=?",
-                (time.time(), user_id)
-            )
-            conn.commit()
-            bot.send_message(
-                message.chat.id,
-                f"✅ *تم إرسال طلبك بنجاح!*\n• رقم الطلب: `{res['order']}`"
-            )
+        r = requests.post(API_URL, data=payload, timeout=10).json()
+        if "order" in r:
+            bot.send_message(message.chat.id, f"✅ تم الطلب\nرقم: `{r['order']}`")
         else:
-            bot.send_message(
-                message.chat.id,
-                f"❌ *رد الموقع:* {res.get('error', 'خطأ غير معروف')}"
-            )
+            bot.send_message(message.chat.id, f"❌ خطأ: {r.get('error')}")
     except:
-        bot.send_message(message.chat.id, "⚙️ *فشل الاتصال.*")
+        bot.send_message(message.chat.id, "⚙️ فشل الاتصال")
 
-# ================== Webhook ==================
-@app.route("/webhook", methods=["POST"])
-def webhook():
-    json_str = request.get_data().decode("utf-8")
-    update = telebot.types.Update.de_json(json_str)
-    bot.process_new_updates([update])
-    return "OK", 200
+# ================= Admin Notify Functions =================
+def notify_vip(user_id):
+    bot.send_message(user_id, "🌟✅ تم منحك اشتراك VIP بنجاح")
 
-def run():
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+def notify_ban(user_id):
+    bot.send_message(user_id, "😂🚫 تم حظرك من استخدام البوت")
 
-# ================== تشغيل ==================
+# ================= Run =================
 if __name__ == "__main__":
-    bot.remove_webhook()
-    bot.set_webhook(url=f"{WEBHOOK_URL}/webhook")
-    run()
+    keep_alive()
+    bot.infinity_polling(skip_pending=True)
