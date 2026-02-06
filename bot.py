@@ -136,6 +136,23 @@ def handle_query(call):
             reply_markup=markup
         )
 
+    # --- هذا هو الجزء الجديد للرد على زر اشتراك VIP ---
+    elif call.data == "buy_vip":
+        text = (
+            "💎⭐ *مميزات اشتراك VIP:*\n"
+            "1️⃣ إلغاء وقت الانتظار (طلب بدون توقف).\n"
+            "2️⃣ أولوية في تنفيذ الطلبات.\n"
+            "3️⃣ دعم فني مباشر.\n\n"
+            "💳 *للاشتراك تواصل مع المطور:* @E2E12"
+        )
+        bot.send_message(call.message.chat.id, text, parse_mode="Markdown")
+        bot.answer_callback_query(call.id) # لإخفاء علامة التحميل من الزر
+
+    elif call.data.startswith("ser_"):
+        # ... بقية كود الخدمات كما هو ...
+        pass
+
+
     elif call.data.startswith("ser_"):
         data = call.data.split("_")
         service_type = data[1]
