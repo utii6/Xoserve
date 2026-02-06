@@ -4,7 +4,7 @@ from telebot import types
 mandatory_channels = []
 
 def register(bot, cursor, conn):
-    OWNER_ID = 5581457665  # رقم المالك
+    [span_1](start_span)OWNER_ID = 5581457665  # رقم المالك[span_1](end_span)
 
     @bot.message_handler(commands=["admin"])
     def admin_panel(message):
@@ -19,9 +19,10 @@ def register(bot, cursor, conn):
             types.InlineKeyboardButton("➕ إضافة قناة", callback_data="add_channel"),
             types.InlineKeyboardButton("📊 احصائيات", callback_data="stats")
         )
-        bot.send_message(message.chat.id, "لوحة التحكم الخاصة بالوالي السلطان:", reply_markup=markup)
+        [span_2](start_span)bot.send_message(message.chat.id, "لوحة التحكم الخاصة بالوالي السلطان:", reply_markup=markup)[span_2](end_span)
 
-    @bot.callback_query_handler(func=lambda call: True)
+    # [span_3](start_span)التعديل هنا: جعل الـ handler يستجيب فقط لبيانات لوحة الإدارة لضمان الاستجابة[span_3](end_span)
+    @bot.callback_query_handler(func=lambda call: call.data in ["ban_user", "unban_user", "vip_user", "broadcast_msg", "add_channel", "stats"])
     def admin_actions(call):
         if call.from_user.id != OWNER_ID:
             return
@@ -46,7 +47,7 @@ def register(bot, cursor, conn):
         elif call.data == "stats":
             cursor.execute("SELECT COUNT(*) FROM users")
             total = cursor.fetchone()[0]
-            bot.send_message(chat_id, f"📊 عدد المستخدمين: {total}")
+            [span_4](start_span)bot.send_message(chat_id, f"📊 عدد المستخدمين: {total}")[span_4](end_span)
 
     # ======== دوال الإدارة ========
     def update_user_status(message, action):
@@ -63,7 +64,7 @@ def register(bot, cursor, conn):
                 bot.send_message(message.chat.id, f"💎✅ تم منح VIP للمستخدم {user_id}")
             conn.commit()
         except:
-            bot.send_message(message.chat.id, "❌ خطأ في الإدخال.")
+            [span_5](start_span)bot.send_message(message.chat.id, "❌ خطأ في الإدخال.")[span_5](end_span)
 
     def broadcast_message(message):
         cursor.execute("SELECT user_id FROM users")
@@ -75,11 +76,11 @@ def register(bot, cursor, conn):
                 count += 1
             except:
                 continue
-        bot.send_message(message.chat.id, f"✅ تم إرسال الرسالة إلى {count} مستخدمين.")
+        [span_6](start_span)bot.send_message(message.chat.id, f"✅ تم إرسال الرسالة إلى {count} مستخدمين.")[span_6](end_span)
 
     def add_channel(message):
         channel = message.text.strip()
         if not channel.startswith("@"):
             channel = f"@{channel}"
         mandatory_channels.append(channel)
-        bot.send_message(message.chat.id, f"✅ تم إضافة القناة {channel} للاشتراك الإجباري.")
+        [span_7](start_span)bot.send_message(message.chat.id, f"✅ تم إضافة القناة {channel} للاشتراك الإجباري.")[span_7](end_span)
