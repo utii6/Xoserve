@@ -11,11 +11,14 @@ service_quantity = {
     "react": 100
 }
 
+OWNER_ID = 5581457665  # رقم المالك
+
 def register(bot, cursor, conn):
 
     @bot.message_handler(commands=["admin"])
     def admin_panel(message):
-        if message.from_user.id != 5581457665:  # رقم المالك
+        if message.from_user.id != OWNER_ID:
+            bot.send_message(message.chat.id, "❌ ليس لديك صلاحية الوصول للوحة الإدارة")
             return
 
         markup = types.InlineKeyboardMarkup(row_width=2)
@@ -31,7 +34,13 @@ def register(bot, cursor, conn):
 
     @bot.callback_query_handler(func=lambda call: call.data.startswith("admin_"))
     def admin_actions(call):
-        if call.from_user.id != 5581457665:
+        try:
+            user_id = int(call.from_user.id)
+        except:
+            return
+
+        if user_id != OWNER_ID:
+            bot.answer_callback_query(call.id, "❌ ليس لديك صلاحية الوصول للوحة الإدارة", show_alert=True)
             return
 
         action = call.data.split("_")[1]
@@ -112,3 +121,12 @@ def register(bot, cursor, conn):
             channel = f"@{channel}"
         mandatory_channels.append(channel)
         bot.send_message(message.chat.id, f"✅ تم إضافة القناة {channel} للاشتراك الاجباري.")
+
+    # ======== أزرار إضافية للاشتراك والمشاركة ========
+    def vip_share_buttons(chat_id):
+        markup = types.InlineKeyboardMarkup(row_width=1)
+        markup.add(
+            types.InlineKeyboardButton("مشاركة البوت", url=f"https://t.me/share/url?url=@{bot.get_me().username}"),
+            types.InlineKeyboardButton("اشترك VIP", callback_data="buy_vip")
+        )
+        bot.send_message(chat_id, "✨ ادخل هنا لمشاركة البوت أو شراء VIP:", reply_markup=markup)
