@@ -37,7 +37,9 @@ cursor_init.execute('''CREATE TABLE IF NOT EXISTS users
                   (user_id BIGINT PRIMARY KEY, 
                    last_sub REAL DEFAULT 0, last_view REAL DEFAULT 0, last_react REAL DEFAULT 0,
                    is_vip INTEGER DEFAULT 0, vip_expiry REAL DEFAULT 0,
-                   is_banned INTEGER DEFAULT 0, referred_by BIGINT DEFAULT 0, points INTEGER DEFAULT 0)''')
+                   is_banned INTEGER DEFAULT 0, username TEXT,
+                   referred_by BIGINT DEFAULT 0, points INTEGER DEFAULT 0)''')
+
 conn_init.commit()
 cursor_init.close()
 conn_init.close()
