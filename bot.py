@@ -20,9 +20,9 @@ app = Flask(__name__)
 
 # ================== قاعدة البيانات (Supabase) ==================
 def get_db_connection():
-    # إصلاح الرابط ليتوافق مع مكتبة psycopg2
-    url = DATABASE_URL.replace("postgres://", "postgresql://")
-    return psycopg2.connect(url)
+    # حذف أي متغيرات زائدة قد تسبب خطأ DSN
+    clean_url = DATABASE_URL.split('?')[0] 
+    return psycopg2.connect(clean_url)
 
 def init_db():
     conn = get_db_connection()
