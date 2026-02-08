@@ -156,5 +156,16 @@ def webhook():
     return 'Forbidden', 403
 
 if __name__ == "__main__":
-    bot.remove_webhook() # حذف الويب هوك
-    bot.infinity_polling() # تشغيل السحب المستمر
+    # 1. تنظيف أي ويب هوك قديم
+    bot.remove_webhook()
+    import time
+    time.sleep(1)
+    
+    # 2. تعيين الويب هوك الجديد (تأكد أن WEBHOOK_URL موجود في إعدادات Render)
+    # الرابط يجب أن يكون مثل: https://xoserve.onrender.com/webhook
+    bot.set_webhook(url=f"{WEBHOOK_URL}/webhook")
+    
+    # 3. تشغيل Flask ليرد على Render ويستقبل الرسائل
+    # هذا السطر هو الذي سيجعل حالة البوت تصبح "Live" باللون الأخضر
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
