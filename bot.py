@@ -22,7 +22,13 @@ bot = telebot.TeleBot(API_TOKEN, parse_mode="Markdown")
 
 # الاتصال بـ Postgres بدلاً من sqlite3
 def get_db_connection():
-    return psycopg2.connect(DATABASE_URL)
+    # تنظيف الرابط من أي إضافات مثل pgbouncer تسبب أخطاء
+    db_url = DATABASE_URL
+    if "?sslmode" in db_url:
+        db_url = db_url.split("?")[0]
+    
+    return psycopg2.connect(db_url)
+
 
 conn_init = get_db_connection()
 cursor_init = conn_init.cursor()
