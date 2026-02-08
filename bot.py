@@ -150,20 +150,35 @@ def handle_callbacks(call):
             bot.register_next_step_handler(msg, update_user_status_admin, action)
         return
 
-    if call.data == "my_account":
+        if call.data == "my_account":
         cursor.execute("SELECT points FROM users WHERE user_id=?", (uid,))
         points = cursor.fetchone()[0]
         bot_username = bot.get_me().username
+        
+        # النص الجديد مع المسافات والأسطر
         referral_link = f"https://t.me/{bot_username}?start={uid}"
-        share_url = f"https://t.me/share/url?url={referral_link}&text=🚀 أقوى بوت لزيادة المتابعين مجاناً!"
+        share_text = (
+            f"{referral_link}\n"
+            "🚀 أقوى بوت لزيادة متابعين وتفاعلات تليجرام مجاناً!\n\n"
+            "✅ زيادة مشتركين، مشاهدات، وتفاعلات حقيقية.\n"
+            "🎁 ادخل من الرابط واحصل على هديتك الآن!"
+        )
+        
+        # ترميز النص ليعمل كرابط مشاركة
+        encoded_text = urllib.parse.quote(share_text)
+        share_url = f"https://t.me/share/url?url={encoded_text}"
         
         markup = types.InlineKeyboardMarkup(row_width=1).add(
-            types.InlineKeyboardButton("🔗 رابط الدعوة الخاص بك", url=share_url),
+            types.InlineKeyboardButton("🔗 مشاركة رابط الدعوة", url=share_url),
             types.InlineKeyboardButton("اشترك VIP ⭐", callback_data="buy_vip")
         )
+        
         status = "💎 VIP" if is_vip else "👤 عادي"
-        bot.send_message(call.message.chat.id, f"👤 *الايدي:* `{uid}`\n💰 *نقاطك:* {points}\n⭐ *حالتك:* {status}", reply_markup=markup)
-    
+        bot.send_message(call.message.chat.id, 
+                         f"👤 *الايدي:* `{uid}`\n"
+                         f"💰 *نقاطك:* {points}\n"
+                         f"⭐ *حالتك:* {status}", reply_markup=markup)
+
     elif call.data == "buy_vip":
         bot.send_message(call.message.chat.id, "الاشتراك يومي بـ 50 نجمه 🌟 أو تجميع 13 إحالة.\nراسل المطور: @e2e12")
 
