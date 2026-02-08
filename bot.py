@@ -3,34 +3,31 @@ import telebot
 from flask import Flask, request
 import psycopg2
 
-# --- جلب البيانات من Render (تطابق الأسماء في صورتك) ---
-BOT_TOKEN = os.environ.get("BOT_TOKEN") # تم التغيير من API_TOKEN
+# جلب الإعدادات من Render (تأكد من مطابقتها لصورتك)
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
 DATABASE_URL = os.environ.get("DATABASE_URL")
 WEBHOOK_URL = os.environ.get("WEBHOOK_URL")
-CHANNEL_USERNAME = os.environ.get("CHANNEL_USERNAME")
-
-# فحص أمان للتأكد من القراءة
-if not BOT_TOKEN:
-    raise ValueError("❌ خطأ: BOT_TOKEN مفقود في إعدادات Render!")
 
 bot = telebot.TeleBot(BOT_TOKEN, parse_mode="Markdown")
 app = Flask(__name__)
 
-# --- ميزة التفاعل (Reactions) ---
+# دالة التفاعل مع الرسالة (Reaction)
 def add_reaction(chat_id, message_id):
     try:
-        # إضافة تفاعل "👍"
-        bot.set_message_reaction(chat_id, message_id, [telebot.types.ReactionTypeEmoji("👍")], is_big=False)
+        # إضافة إيموجي "👍" على رسالة المستخدم
+        bot.set_message_reaction(chat_id, message_id, [telebot.types.ReactionTypeEmoji("👍")])
     except Exception as e:
         print(f"Reaction error: {e}")
 
-# --- معالج الرسائل ---
+# معالجة أمر البداية
 @bot.message_handler(commands=['start'])
-def handle_start(message):
+def start(message):
+    # تفاعل مع رسالة المستخدم
     add_reaction(message.chat.id, message.message_id)
-    bot.reply_to(message, "تم تحديث الكود بنجاح! التفاعل شغال والقاعدة متصلة. 🚀")
+    # الرد برسالة
+    bot.reply_to(message, "✅ تم التحديث بنجاح!\n\nالبوت الآن متصل بقاعدة البيانات ويدعم التفاعل مع الرسائل.")
 
-# --- دالة الويب هوك ---
+# دالة الاستقبال (Webhook Handler)
 @app.route('/webhook', methods=['POST'])
 def webhook():
     if request.headers.get('content-type') == 'application/json':
@@ -40,6 +37,10 @@ def webhook():
         return '', 200
     return 'Forbidden', 403
 
-# إعداد الويب هوك عند التشغيل
-bot.remove_webhook()
-bot.set_webhook(url=f"{WEBHOOK_URL}/webhook")
+# ضبط الويب هوك تلقائياً عند التشغيل
+try:
+    bot.remove_webhook()
+    bot.set_webhook(url=f"{WEBHOOK_URL}/webhook")
+    print("✅ Webhook is ready!")
+except Exception as e:
+    print(f"❌ Webhook Error: {e}")
