@@ -200,16 +200,32 @@ def start(message):
     conn.close() 
 
     if not is_subscribed(uid):
-        markup = types.InlineKeyboardMarkup().add(types.InlineKeyboardButton("مَـدار📢", url=f"https://t.me/{CH_ID.replace('@','')}"))
-        return bot.send_message(message.chat.id, f"⚠️ *يجب الاشتراك هنا {CH_ID} !*", reply_markup=markup)
+        # --- استبدل جزء قائمة الأزرار في دالة start بهذا الكود ---
 
     markup = types.InlineKeyboardMarkup(row_width=2).add(
         types.InlineKeyboardButton("👥 زيادة مشتركين", callback_data="ser_sub_14681"),
         types.InlineKeyboardButton("👀 زيادة مشاهدات", callback_data="ser_view_14527"),
         types.InlineKeyboardButton("❤️ تفاعلات", callback_data="ser_react_13925"),
+        types.InlineKeyboardButton("👁️ مشاهدات تلقائية", callback_data="auto_views_info"), # الزر الذي كان ناقصاً
         types.InlineKeyboardButton("👤 حسابي", callback_data="my_account"),
         types.InlineKeyboardButton("💎 اشتراك VIP", callback_data="vip_menu")
     )
+    bot.send_message(message.chat.id, "*أهلاً بك في بوت الخدمات المجانية* 🆓\n*𝚍𝚎𝚟:* @E2E12", reply_markup=markup)
+
+# --- أضف هذه الدالة تحت handle_callbacks لكي يعمل الزر عند الضغط عليه ---
+
+    if call.data == "auto_views_info":
+        info_text = (
+            "👁️ **خدمة المشاهدات التلقائية للمنشورات:**\n\n"
+            "هذه الخدمة مخصصة للقنوات، لست بحاجة لطلب رشق لكل منشور يدوياً!\n\n"
+            "🛡️ **طريقة التفعيل:**\n"
+            "1- قم بإضافة البوت مشرفاً (Admin) في قناتك.\n"
+            "2- امنحه صلاحية (نشر المنشورات).\n"
+            "3- سيبدأ البوت تلقائياً برشق مشاهدات لكل  منشورات تنشرها يومياً.\n\n"
+            "⚠️ الخدمة مفعلة حالياً لجميع القنوات المضافة!"
+        )
+        bot.send_message(call.message.chat.id, info_text)
+
     bot.send_message(message.chat.id, "*أهلاً بك في بوت الخدمات المجانية* 🆓\n*𝚍𝚎𝚟:* @E2E12", reply_markup=markup)
 
 # --- معالجة الضغط على الأزرار ---
