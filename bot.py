@@ -298,7 +298,7 @@ def handle_callbacks(call):
     elif call.data == "buy_vip_stars":
         bot.send_invoice(call.message.chat.id, "اشتراك VIP", "التخلص من وقت الانتظار", "vip", "", "XTR", [types.LabeledPrice("Stars", 20)])
 
-        elif call.data == "my_account":
+    elif call.data == "my_account":
         conn = get_db_connection(); cursor = conn.cursor()
         cursor.execute("SELECT points FROM users WHERE user_id=%s", (uid,))
         points = cursor.fetchone()[0]; cursor.close(); conn.close()
