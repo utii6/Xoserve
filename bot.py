@@ -428,6 +428,7 @@ def process_order(message, s_id, col):
     if __name__ == "__main__":
     from flask import Flask, request
     import os
+    import telebot
 
     app = Flask(__name__)
 
