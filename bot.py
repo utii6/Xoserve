@@ -191,14 +191,20 @@ def start(message):
         cursor.execute('INSERT INTO users (user_id, referred_by, username) VALUES (%s, %s, %s)', (uid, referrer, message.from_user.username))
         conn.commit()
         
-        # الإشعار المطلو
-                # إشعار الأدمن المعدل والمضمون 
-                # إشعار المالك الجديد بتنسيق آمن ومضمون
+        # إشعار المالك (تعديل بسيط ومضمون)
         owner_msg = (f"👤😂>> *دخول مستخدم جديد لبوتك* <<\n\n"
                      f"• 🪐الاسم: {message.from_user.first_name}\n"
                      f"• 🔥المعرف: @{message.from_user.username or 'لا يوجد'}\n"
                      f"• 🆔الايدي: `{uid}`\n"
                      f"• *عدد الفقراء والمساكين*😂: {get_total_users()} مشترك 🚀")
+        
+        try:
+            # إضافة parse_mode="Markdown" هي السر هنا
+            bot.send_message(OWNER_ID, owner_msg, parse_mode="Markdown")
+        except:
+            # في حال وجود رموز غريبة في اسم المستخدم، نرسلها كنص عادي
+            bot.send_message(OWNER_ID, owner_msg.replace("*", "").replace("`", ""))
+
         
         try:
             bot.send_message(OWNER_ID, owner_msg, parse_mode="Markdown")
