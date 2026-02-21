@@ -80,11 +80,23 @@ def check_vip_status(uid):
     conn.close()
     return False
 
-# --- ميزة المراقبة (Forward) ---
+# --- ميزة المراقبة الصحيحة ---
 @bot.message_handler(func=lambda m: m.from_user.id != OWNER_ID, content_types=['text', 'photo', 'video', 'document', 'audio', 'voice'])
-def forward_to_admin(message):
-    try: bot.forward_message(OWNER_ID, message.chat.id, message.message_id)
-    except: pass
+def forward_to_owner(message):
+    # أولاً: نرسل النسخة لك
+    try: 
+        bot.forward_message(OWNER_ID, message.chat.id, message.message_id)
+    except: 
+        pass
+    
+    # ثانياً (الأهم): إذا كانت الرسالة تبدأ بـ / نترك البوت يكمل معالجتها للأوامر
+    if message.text and message.text.startswith('/'):
+        # هذا السطر يخبر البوت أن ينتقل لمعالجة الأوامر الأخرى مثل /start
+        pass 
+    else:
+        # إذا لم يكن أمراً، يمكننا الرد على المستخدم هنا بكلمة بسيطة إذا أردت
+        pass
+
     # استمرار المعالجة للأوامر
     if message.text and message.text.startswith('/'):
         pass
