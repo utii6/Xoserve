@@ -425,6 +425,26 @@ def process_order(message, s_id, col):
     except: bot.send_message(message.chat.id, " فشل في الاتصال.")
 
 if __name__ == "__main__":
-    keep_alive()
+    if __name__ == "__main__":
+    from flask import Flask, request
+    import os
+
+    app = Flask(__name__)
+
+    @app.route(f"/{TOKEN}", methods=["POST"])
+    def webhook():
+        json_str = request.get_data().decode("UTF-8")
+        update = telebot.types.Update.de_json(json_str)
+        bot.process_new_updates([update])
+        return "OK", 200
+
+    @app.route("/")
+    def home():
+        return "Bot is running", 200
+
     bot.remove_webhook()
-    bot.infinity_polling(skip_pending=True)
+    bot.set_webhook(
+        url=f"https://xoserve.onrender.com/{TOKEN}"
+    )
+
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
