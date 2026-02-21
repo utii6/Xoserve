@@ -10,7 +10,7 @@ def home(): return "البوت يعمل بكفاءة ونظام الإحالة �
 def run(): app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
 def keep_alive(): Thread(target=run, daemon=True).start()
 
-# --- الإعدادات (المتغيرات من Render) ---
+# --- الإعدادات ---
 API_TOKEN = os.getenv('BOT_TOKEN')
 SMM_API_KEY = os.getenv('SMM_API_KEY')
 CH_ID = os.getenv('CHANNEL_USERNAME')
@@ -20,88 +20,13 @@ OWNER_ID = 5581457665
 
 bot = telebot.TeleBot(API_TOKEN, parse_mode="Markdown")
 
-# الاتصال بـ Postgres
 def get_db_connection():
     db_url = DATABASE_URL
     if db_url and "?sslmode" in db_url:
         db_url = db_url.split("?")[0]
     return psycopg2.connect(db_url)
 
-# تهيئة الجداول
-conn_init = get_db_connection()
-cursor_init = conn_init.cursor()
-cursor_init.execute('''CREATE TABLE IF NOT EXISTS users 
-                  (user_id BIGINT PRIMARY KEY, 
-                   last_sub REAL DEFAULT 0, last_view REAL DEFAULT 0, last_react REAL DEFAULT 0,
-                   is_vip INTEGER DEFAULT 0, vip_expiry REAL DEFAULT 0,
-                   is_banned INTEGER DEFAULT 0, referred_by BIGINT DEFAULT 0, points INTEGER DEFAULT 0,
-                   username TEXT)''')
-cursor_init.execute('''CREATE TABLE IF NOT EXISTS auto_channels 
-                  (chat_id BIGINT PRIMARY KEY, posts_count INTEGER DEFAULT 0, last_post_date TEXT)''')
-conn_init.commit()
-cursor_init.close()
-conn_init.close()
-
-# --- الوظائف المساعدة ---
-def get_total_users():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('SELECT COUNT(*) FROM users')
-    res = cursor.fetchone()[0]
-    cursor.close()
-    conn.close()
-    return 13485 + res
-
-def is_subscribed(user_id):
-    if not CH_ID or CH_ID == "None": return True
-    try:
-        status = bot.get_chat_member(CH_ID, user_id).status
-        return status in ['member', 'administrator', 'creator']
-    except: return True
-
-def check_vip_status(uid):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT is_vip, vip_expiry FROM users WHERE user_id=%s", (uid,))
-    res = cursor.fetchone()
-    if not res: 
-        cursor.close()
-        conn.close()
-        return False
-    is_vip, expiry = res[0], res[1]
-    if is_vip == 1 and (expiry == 0 or time.time() < expiry): 
-        cursor.close()
-        conn.close()
-        return True
-    if is_vip == 1 and expiry > 0 and time.time() > expiry:
-        cursor.execute("UPDATE users SET is_vip=0, vip_expiry=0 WHERE user_id=%s", (uid,))
-        conn.commit()
-    cursor.close()
-    conn.close()
-    return False
-
-# --- ميزة المراقبة الصحيحة ---
-@bot.message_handler(func=lambda m: m.from_user.id != OWNER_ID, content_types=['text', 'photo', 'video', 'document', 'audio', 'voice'])
-def forward_to_owner(message):
-    # أولاً: نرسل النسخة لك
-    try: 
-        bot.forward_message(OWNER_ID, message.chat.id, message.message_id)
-    except: 
-        pass
-    
-    # ثانياً (الأهم): إذا كانت الرسالة تبدأ بـ / نترك البوت يكمل معالجتها للأوامر
-    if message.text and message.text.startswith('/'):
-        # هذا السطر يخبر البوت أن ينتقل لمعالجة الأوامر الأخرى مثل /start
-        pass 
-    else:
-        # إذا لم يكن أمراً، يمكننا الرد على المستخدم هنا بكلمة بسيطة إذا أردت
-        pass
-
-    # استمرار المعالجة للأوامر
-    if message.text and message.text.startswith('/'):
-        pass
-
-# --- لوحة التحكم للإدارة الكاملة ---
+# --- (1) أوامر الإدارة أولاً لضمان استجابتها للمالك ---
 @bot.message_handler(commands=["admin"])
 def admin_panel(message):
     if message.from_user.id != OWNER_ID: return
@@ -120,55 +45,13 @@ def admin_panel(message):
     )
     bot.send_message(message.chat.id, "🛠 *لوحة تحكم السلطان الوالي المتكاملة:*", reply_markup=markup)
 
-# --- إشعار إضافة البوت لقناة/مجموعة ---
-@bot.my_chat_member_handler()
-def bot_added_to_chat(message):
-    if message.new_chat_member.status in ['administrator', 'member']:
-        chat = message.chat
-        user = message.from_user
-        conn = get_db_connection(); cursor = conn.cursor()
-        cursor.execute("INSERT INTO auto_channels (chat_id) VALUES (%s) ON CONFLICT DO NOTHING", (chat.id,))
-        conn.commit()
-        cursor.execute("SELECT COUNT(*) FROM auto_channels"); total_ch = cursor.fetchone()[0]
-        cursor.close(); conn.close()
-        info = (f"🆕 **قام مستخدم جديد بإضافة البوت الخاص بك إلى قناته**\n\n"
-                f"📌 **معلومات القناه:**\n"
-                f"• اسم المجموعة: {chat.title}\n"
-                f"• الآيدي: `{chat.id}`\n"
-                f"• اسم المستخدم: @{chat.username or 'لا يوجد'}\n\n"
-                f"👤 **معلومات العضو الذي قام بالإضافة:**\n"
-                f"• الاسم: {user.first_name}\n"
-                f"• اسم الحلو: @{user.username or 'لا يوجد'}\n"
-                f"• الآيدي: `{user.id}`\n\n"
-                f"📊 إجمالي عدد القنوات حتى الآن: {total_ch}")
-        bot.send_message(OWNER_ID, info)
-
-# --- نظام المشاهدات التلقائي للمنشورات ---
-@bot.channel_post_handler(content_types=['text', 'photo', 'video'])
-def auto_view_posts(message):
-    cid = message.chat.id
-    today = time.strftime("%Y-%m-%d")
-    conn = get_db_connection(); cursor = conn.cursor()
-    cursor.execute("SELECT posts_count, last_post_date FROM auto_channels WHERE chat_id=%s", (cid,))
-    res = cursor.fetchone()
-    if res:
-        count, last_date = res[0], res[1]
-        if last_date != today: count = 0
-        if count < 4:
-            post_link = f"https://t.me/{message.chat.username}/{message.message_id}" if message.chat.username else None
-            if post_link:
-                payload = {'key': SMM_API_KEY, 'action': 'add', 'service': '10992', 'link': post_link, 'quantity': 100}
-                requests.post(API_URL, data=payload)
-                cursor.execute("UPDATE auto_channels SET posts_count=%s, last_post_date=%s WHERE chat_id=%s", (count+1, today, cid))
-                conn.commit()
-    cursor.close(); conn.close()
-
-# --- أمر التشغيل الرئيسي ---
+# --- (2) أمر التشغيل الرئيسي (لضمان رده على المستخدمين) ---
 @bot.message_handler(commands=['start'])
 def start(message):
     uid = message.from_user.id
     args = message.text.split()
     
+    # التفاعل (Reaction) 🔥
     try:
         bot.set_message_reaction(message.chat.id, message.message_id, [types.ReactionTypeEmoji("🔥")])
     except: pass
@@ -190,7 +73,6 @@ def start(message):
                 conn.commit()
                 cursor.execute('SELECT points, is_vip FROM users WHERE user_id=%s', (referrer,))
                 ref_data = cursor.fetchone()
-                # تعديل: 9 نقاط للـ VIP
                 if ref_data and ref_data[0] >= 9 and ref_data[1] == 0:
                     cursor.execute('UPDATE users SET is_vip=1, vip_expiry=%s, points=0 WHERE user_id=%s', (time.time() + 86400, referrer))
                     conn.commit()
@@ -203,36 +85,17 @@ def start(message):
         cursor.execute('INSERT INTO users (user_id, referred_by, username) VALUES (%s, %s, %s)', (uid, referrer, message.from_user.username))
         conn.commit()
         
-        # إشعار المالك (تعديل بسيط ومضمون)
+        # إشعار المالك المضمون (إصلاح النقطة التي طلبتها)
         owner_msg = (f"👤😂>> *دخول مستخدم جديد لبوتك* <<\n\n"
                      f"• 🪐الاسم: {message.from_user.first_name}\n"
                      f"• 🔥المعرف: @{message.from_user.username or 'لا يوجد'}\n"
                      f"• 🆔الايدي: `{uid}`\n"
                      f"• *عدد الفقراء والمساكين*😂: {get_total_users()} مشترك 🚀")
-        
-        try:
-            # إضافة parse_mode="Markdown" هي السر هنا
-            bot.send_message(OWNER_ID, owner_msg, parse_mode="Markdown")
-        except:
-            # في حال وجود رموز غريبة في اسم المستخدم، نرسلها كنص عادي
-            bot.send_message(OWNER_ID, owner_msg.replace("*", "").replace("`", ""))
-
-        
         try:
             bot.send_message(OWNER_ID, owner_msg, parse_mode="Markdown")
         except:
-            # إذا فشل الإرسال بسبب رموز في الاسم، يرسله كنص عادي لضمان وصوله
-            bot.send_message(OWNER_ID, owner_msg.replace("*", "").replace("`", ""))
+            bot.send_message(OWNER_ID, owner_msg.replace("*", "").replace("`", "").replace(">", ""))
 
-        
-        try: 
-            bot.send_message(OWNER_ID, owner_msg, parse_mode="Markdown")
-        except Exception as e:
-            # إذا فشل المارك داون بسبب رموز غريبة في الاسم، يرسله كنص عادي لضمان الوصول
-            bot.send_message(OWNER_ID, owner_msg.replace("*", ""))
-
-        except: pass
-    
     cursor.close(); conn.close() 
 
     if not is_subscribed(uid):
@@ -247,7 +110,6 @@ def start(message):
         types.InlineKeyboardButton("👤 حسابي", callback_data="my_account"),
         types.InlineKeyboardButton("💎 اشتراك VIP", callback_data="vip_menu")
     )
-    # رسالة الترحيب المطلوبة
     welcome_text = (f"✨ *أهلاً بك في بوت الخدمات المجانية* ✨\n\n"
                     f"🚀 *يمكنك من خلال البوت زيادة:*\n"
                     f"• تفاعل قناتك مجاناً 🆓\n"
@@ -255,7 +117,15 @@ def start(message):
                     f"• *𝚍𝚎𝚟*: @E2E12")
     bot.send_message(message.chat.id, welcome_text, reply_markup=markup)
 
-# --- معالجة الضغط على الأزرار ---
+# --- (3) دالة المراقبة (توضع بعد الأوامر لكي لا تخطف الردود) ---
+@bot.message_handler(func=lambda m: m.from_user.id != OWNER_ID, content_types=['text', 'photo', 'video', 'document', 'audio', 'voice'])
+def forward_to_owner(message):
+    try: 
+        bot.forward_message(OWNER_ID, message.chat.id, message.message_id)
+    except: 
+        pass
+
+# --- بقية الدوال (Callback, Orders, etc.) كما هي في كودك ---
 @bot.callback_query_handler(func=lambda call: True)
 def handle_callbacks(call):
     uid = call.from_user.id
@@ -293,7 +163,6 @@ def handle_callbacks(call):
         )
         return bot.send_message(call.message.chat.id, info_text)
 
-    # أوامر الإدارة
     if call.data.startswith("adm_") and uid == OWNER_ID:
         action = call.data.split("_")[1]
         if action == "sts":
@@ -335,34 +204,21 @@ def handle_callbacks(call):
         conn = get_db_connection(); cursor = conn.cursor()
         cursor.execute("SELECT points FROM users WHERE user_id=%s", (uid,))
         points = cursor.fetchone()[0]; cursor.close(); conn.close()
-        
         bot_username = bot.get_me().username
         referral_link = f"https://t.me/{bot_username}?start={uid}"
-        
-        # --- النص الدعائي الذي طلبته ---
         share_text = (f"🚀 *أقوى بوت لزيادة متابعين وتفاعلات تليجرام مجاناً*!\n"
                       f"✅ *زيادة مشتركين، مشاهدات، وتفاعلات حقيقية*.\n"
                       f"🎁 *ادخل من الرابط واحصل على هديتك الآن*!\n\n"
                       f"{referral_link}")
-        
-        # ترميز النص ليكون صالحاً كـ رابط (URL)
         encoded_msg = urllib.parse.quote(share_text)
         share_url = f"https://t.me/share/url?url={encoded_msg}"
-        
         markup = types.InlineKeyboardMarkup(row_width=1).add(
             types.InlineKeyboardButton("🔗 مشاركة الرابط", url=share_url),
             types.InlineKeyboardButton("اشترك VIP (مجاناً) ⭐", callback_data="buy_vip_points"),
             types.InlineKeyboardButton("🔙 رجوع", callback_data="back_start")
         )
-        
         status = "💎 VIP" if is_vip else "👤 عادي"
-        bot.send_message(call.message.chat.id, 
-                         f"🆔 *الايدي:* `{uid}`\n"
-                         f"💰 *نقاطك:* {points}\n"
-                         f"❤️‍🔥 *حالتك:* {status}\n\n"
-                         f"🔗 *رابط الدعوة الخاص بك:* \n`{referral_link}`", 
-                         reply_markup=markup)
-
+        bot.send_message(call.message.chat.id, f"🆔 *الايدي:* `{uid}`\n💰 *نقاطك:* {points}\n❤️‍🔥 *حالتك:* {status}\n\n🔗 *رابط الدعوة الخاص بك:* \n`{referral_link}`", reply_markup=markup)
     
     elif call.data == "buy_vip_points":
         conn = get_db_connection(); cursor = conn.cursor()
@@ -380,14 +236,54 @@ def handle_callbacks(call):
         conn = get_db_connection(); cursor = conn.cursor()
         cursor.execute(f"SELECT {col} FROM users WHERE user_id=%s", (uid,))
         last_time = cursor.fetchone()[0]; cursor.close(); conn.close()
-        # تعديل: ساعة ونصف (5400 ثانية)
         if not is_vip and (time.time() - last_time) < 5400:
             rem = int(5400 - (time.time() - last_time))
             return bot.answer_callback_query(call.id, f"⏳ متبقي {rem//3600} ساعة و {(rem%3600)//60} دقيقة", show_alert=True)
         msg = bot.send_message(call.message.chat.id, "🔗 *ارسل الرابط الآن:*")
         bot.register_next_step_handler(msg, process_order, s_id, col)
 
-# --- نظام الدفع والطلبات ---
+# --- (4) بقية الوظائف الإضافية ---
+@bot.my_chat_member_handler()
+def bot_added_to_chat(message):
+    if message.new_chat_member.status in ['administrator', 'member']:
+        chat = message.chat
+        user = message.from_user
+        conn = get_db_connection(); cursor = conn.cursor()
+        cursor.execute("INSERT INTO auto_channels (chat_id) VALUES (%s) ON CONFLICT DO NOTHING", (chat.id,))
+        conn.commit()
+        cursor.execute("SELECT COUNT(*) FROM auto_channels"); total_ch = cursor.fetchone()[0]
+        cursor.close(); conn.close()
+        info = (f"🆕 **قام مستخدم جديد بإضافة البوت الخاص بك إلى قناته**\n\n"
+                f"📌 **معلومات القناه:**\n"
+                f"• اسم المجموعة: {chat.title}\n"
+                f"• الآيدي: `{chat.id}`\n"
+                f"• اسم المستخدم: @{chat.username or 'لا يوجد'}\n\n"
+                f"👤 **معلومات العضو الذي قام بالإضافة:**\n"
+                f"• الاسم: {user.first_name}\n"
+                f"• اسم الحلو: @{user.username or 'لا يوجد'}\n"
+                f"• الآيدي: `{user.id}`\n\n"
+                f"📊 إجمالي عدد القنوات حتى الآن: {total_ch}")
+        bot.send_message(OWNER_ID, info)
+
+@bot.channel_post_handler(content_types=['text', 'photo', 'video'])
+def auto_view_posts(message):
+    cid = message.chat.id
+    today = time.strftime("%Y-%m-%d")
+    conn = get_db_connection(); cursor = conn.cursor()
+    cursor.execute("SELECT posts_count, last_post_date FROM auto_channels WHERE chat_id=%s", (cid,))
+    res = cursor.fetchone()
+    if res:
+        count, last_date = res[0], res[1]
+        if last_date != today: count = 0
+        if count < 4:
+            post_link = f"https://t.me/{message.chat.username}/{message.message_id}" if message.chat.username else None
+            if post_link:
+                payload = {'key': SMM_API_KEY, 'action': 'add', 'service': '10992', 'link': post_link, 'quantity': 100}
+                requests.post(API_URL, data=payload)
+                cursor.execute("UPDATE auto_channels SET posts_count=%s, last_post_date=%s WHERE chat_id=%s", (count+1, today, cid))
+                conn.commit()
+    cursor.close(); conn.close()
+
 @bot.pre_checkout_query_handler(func=lambda query: True)
 def checkout(query): bot.answer_pre_checkout_query(query.id, ok=True)
 
@@ -425,12 +321,7 @@ def broadcast_step(message):
 def process_order(message, s_id, col):
     if not message.text or not message.text.startswith("http"):
         return bot.send_message(message.chat.id, "❌ الرابط غير صحيح.")
-    
-    # تحديد الكميات الجديدة
-    if s_id == "14527": q = 1300
-    elif s_id == "13894": q = 20
-    else: q = 20 # للتفاعلات
-    
+    q = 1300 if s_id == "14527" else 20
     payload = {'key': SMM_API_KEY, 'action': 'add', 'service': s_id, 'link': message.text, 'quantity': q}
     try:
         res = requests.post(API_URL, data=payload).json()
