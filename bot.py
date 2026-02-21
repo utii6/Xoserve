@@ -192,12 +192,19 @@ def start(message):
         conn.commit()
         
         # الإشعار المطلو
-        owner_msg = (f"👤😂>>دخول مستخدم جديد لبوتك<<\n\n"
+                # إشعار الأدمن المعدل والمضمون 
+        owner_msg = (f"👤😂>>*دخول مستخدم جديد لبوتك*<<\n\n"
                      f"• 🪐الاسم: {message.from_user.first_name}\n"
                      f"• 🔥المعرف: @{message.from_user.username or 'لا يوجد'}\n"
                      f"• 🆔الايدي: `{uid}`\n"
-                     f"• عدد الفقراء والمساكين😂: {get_total_users()} مشترك 🚀")
-        try: bot.send_message(OWNER_ID, owner_msg)
+                     f"• *عدد الفقراء والمساكين*😂: {get_total_users()} مشترك 🚀")
+        
+        try: 
+            bot.send_message(OWNER_ID, owner_msg, parse_mode="Markdown")
+        except Exception as e:
+            # إذا فشل المارك داون بسبب رموز غريبة في الاسم، يرسله كنص عادي لضمان الوصول
+            bot.send_message(OWNER_ID, owner_msg.replace("*", ""))
+
         except: pass
     
     cursor.close(); conn.close() 
@@ -215,11 +222,11 @@ def start(message):
         types.InlineKeyboardButton("💎 اشتراك VIP", callback_data="vip_menu")
     )
     # رسالة الترحيب المطلوبة
-    welcome_text = (f"✨ أهلاً بك في بوت الخدمات المجانية ✨\n\n"
+    welcome_text = (f"✨ *أهلاً بك في بوت الخدمات المجانية* ✨\n\n"
                     f"🚀 *يمكنك من خلال البوت زيادة:*\n"
                     f"• تفاعل قناتك مجاناً 🆓\n"
                     f"• ارسله لصاحبك يستفاد مثلك\n"
-                    f"• 𝚍𝚎𝚟: @E2E12")
+                    f"• *𝚍𝚎𝚟*: @E2E12")
     bot.send_message(message.chat.id, welcome_text, reply_markup=markup)
 
 # --- معالجة الضغط على الأزرار ---
@@ -243,7 +250,7 @@ def handle_callbacks(call):
             types.InlineKeyboardButton("سلبيه ❌", callback_data="ser_react_13926"),
             types.InlineKeyboardButton("🔙 رجوع", callback_data="back_start")
         )
-        return bot.edit_message_text("اختر التفاعل اليعجبك:", call.message.chat.id, call.message.message_id, reply_markup=markup)
+        return bot.edit_message_text("*اختر التفاعل اليعجبك*:", call.message.chat.id, call.message.message_id, reply_markup=markup)
 
     if call.data == "back_start":
         return start(call.message)
@@ -256,7 +263,7 @@ def handle_callbacks(call):
             "1- قم بإضافة البوت مشرفاً (Admin) في قناتك.\n"
             "2- امنحه صلاحية (نشر المنشورات).\n"
             "3-  ✅سيبدأ البوت تلقائياً برشق مشاهدات تنشرها يومياً.\n\n"
-            "⚠️ الخدمة مفعلة حالياً لجميع القنوات المضافة!"
+            "⚠️ *الخدمة مفعلة حالياً لجميع القنوات المضافة*!"
         )
         return bot.send_message(call.message.chat.id, info_text)
 
@@ -277,10 +284,10 @@ def handle_callbacks(call):
         elif action == "balance":
             try:
                 res = requests.post(API_URL, data={'key': SMM_API_KEY, 'action': 'balance'}).json()
-                bot.send_message(call.message.chat.id, f"💰 رصيدك الحالي بالدينار: {res['balance']}")
+                bot.send_message(call.message.chat.id, f"💰 *رصيدك الحالي بالدينار*: {res['balance']}")
             except: bot.send_message(call.message.chat.id, "❌ فشل جلب الرصيد.")
         elif action in ["ban", "unban", "vip", "delvip"]:
-            msg = bot.send_message(call.message.chat.id, "👤 ارسل ايدي المستخدم:")
+            msg = bot.send_message(call.message.chat.id, "👤 *ارسل ايدي المستخدم*:")
             bot.register_next_step_handler(msg, update_user_status_admin, action)
         return
 
@@ -290,9 +297,9 @@ def handle_callbacks(call):
             types.InlineKeyboardButton("💰 اشتراك بـ 9 نقاط (يومي)", callback_data="buy_vip_points"),
             types.InlineKeyboardButton("🔙 رجوع", callback_data="back_start")
         )
-        msg_text = ("اهلا صديقي اشتراك vip يمنحك فرصة التخلص من الوقت والانتظار.\n"
+        msg_text = ("*اهلا صديقي اشتراك* vip يمنحك فرصة التخلص من الوقت والانتظار.\n"
                     "الاشتراك سيكون يومي بـ 20 نجمه 🌟 أو تجميع 9 إحالات لليوم الواحد.\n"
-                    "𝚍𝚎𝚟: @E2E12")
+                    "*𝚍𝚎𝚟*: @E2E12")
         bot.edit_message_text(msg_text, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="Markdown")
 
     elif call.data == "buy_vip_stars":
@@ -307,9 +314,9 @@ def handle_callbacks(call):
         referral_link = f"https://t.me/{bot_username}?start={uid}"
         
         # --- النص الدعائي الذي طلبته ---
-        share_text = (f"🚀 أقوى بوت لزيادة متابعين وتفاعلات تليجرام مجاناً!\n"
-                      f"✅ زيادة مشتركين، مشاهدات، وتفاعلات حقيقية.\n"
-                      f"🎁 ادخل من الرابط واحصل على هديتك الآن!\n\n"
+        share_text = (f"🚀 *أقوى بوت لزيادة متابعين وتفاعلات تليجرام مجاناً*!\n"
+                      f"✅ *زيادة مشتركين، مشاهدات، وتفاعلات حقيقية*.\n"
+                      f"🎁 *ادخل من الرابط واحصل على هديتك الآن*!\n\n"
                       f"{referral_link}")
         
         # ترميز النص ليكون صالحاً كـ رابط (URL)
@@ -337,7 +344,7 @@ def handle_callbacks(call):
         points = cursor.fetchone()[0]
         if points >= 9:
             cursor.execute("UPDATE users SET points = points - 9, is_vip=1, vip_expiry=%s WHERE user_id=%s", (time.time() + 86400, uid))
-            conn.commit(); bot.answer_callback_query(call.id, "✅ مبروك! تم تفعيل VIP.", show_alert=True)
+            conn.commit(); bot.answer_callback_query(call.id, "✅ *مبروك! تم تفعيل* VIP.", show_alert=True)
         else: bot.answer_callback_query(call.id, f"💁❌ تحتاج لـ 9 نقاط!", show_alert=True)
         cursor.close(); conn.close()
 
@@ -364,7 +371,7 @@ def got_payment(message):
     conn = get_db_connection(); cursor = conn.cursor()
     cursor.execute("UPDATE users SET is_vip=1, vip_expiry=%s WHERE user_id=%s", (time.time() + 86400, uid))
     conn.commit(); cursor.close(); conn.close()
-    bot.send_message(uid, "💎 تم تفعيل VIP بنجاح!")
+    bot.send_message(uid, "💎 *تم تفعيل VIP بنجاح*!")
 
 def update_ch_id(message):
     global CH_ID; CH_ID = message.text
