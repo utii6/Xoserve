@@ -424,10 +424,10 @@ def process_order(message, s_id, col):
         else: bot.send_message(message.chat.id, "❌ فشل، راجع @iE2017.")
     except: bot.send_message(message.chat.id, " فشل في الاتصال.")
 
-    if __name__ == "__main__":
-    from flask import Flask, request
-    import os
+from flask import Flask, request
+import os
 
+if __name__ == "__main__":
     app = Flask(__name__)
 
     @app.route(f"/{TOKEN}", methods=["POST"])
