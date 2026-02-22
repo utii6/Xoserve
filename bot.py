@@ -435,8 +435,15 @@ def process_order(message, s_id, col):
 
 if __name__ == "__main__":
     keep_alive()
+    
+    # حذف أي Webhook قديم لتجنب Conflict 409
     try:
-        bot.remove_webhook()  # حذف أي Webhook قديم
-    except: 
-        pass
-    bot.infinity_polling(skip_pending=True, none_stop=True)  # إضافة none_stop=True لتجنب توقف البوت
+        bot.remove_webhook()
+    except Exception as e:
+        print(f"⚠️ فشل حذف Webhook القديم: {e}")
+    
+    # البدء بالـ Polling بعد حذف الـ Webhook
+    try:
+        bot.infinity_polling(skip_pending=True, none_stop=True)
+    except telebot.apihelper.ApiTelegramException as e:
+        print(f"❌ خطأ في الاتصال بـ Telegram: {e}")
