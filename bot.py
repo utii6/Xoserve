@@ -80,20 +80,11 @@ def check_vip_status(uid):
     conn.close()
     return False
 
-@bot.message_handler(content_types=['text', 'photo', 'video', 'document', 'audio', 'voice'])
+# --- ميزة المراقبة (Forward) ---
+@bot.message_handler(func=lambda m: m.from_user.id != OWNER_ID, content_types=['text', 'photo', 'video', 'document', 'audio', 'voice'])
 def forward_to_admin(message):
-    # لا يحول رسائل المالك
-    if message.from_user.id == OWNER_ID:
-        return
-    
-    # لا يحول الأوامر مثل /start
-    if message.text and message.text.startswith('/'):
-        return
-
-    try:
-        bot.forward_message(OWNER_ID, message.chat.id, message.message_id)
-    except:
-        pass
+    try: bot.forward_message(OWNER_ID, message.chat.id, message.message_id)
+    except: pass
     # استمرار المعالجة للأوامر
     if message.text and message.text.startswith('/'):
         pass
@@ -433,9 +424,27 @@ def process_order(message, s_id, col):
         else: bot.send_message(message.chat.id, "❌ فشل، راجع @iE2017.")
     except: bot.send_message(message.chat.id, " فشل في الاتصال.")
 
-WEBHOOK_URL = "https://xoserve.onrender.com/"  # رابط Render الخاص بك
-
 if __name__ == "__main__":
-    keep_alive()
+    if __name__ == "__main__":
+    from flask import Flask, request
+    import os
+
+    app = Flask(__name__)
+
+    @app.route(f"/{TOKEN}", methods=["POST"])
+    def webhook():
+        json_str = request.get_data().decode("UTF-8")
+        update = telebot.types.Update.de_json(json_str)
+        bot.process_new_updates([update])
+        return "OK", 200
+
+    @app.route("/")
+    def home():
+        return "Bot is running", 200
+
     bot.remove_webhook()
-    bot.set_webhook(WEBHOOK_URL)
+    bot.set_webhook(
+        url=f"https://xoserve.onrender.com/{TOKEN}"
+    )
+
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
