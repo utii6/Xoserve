@@ -72,10 +72,6 @@ def check_vip_status(uid):
     return False
 
 # --- ميزة الـ Forward لكل رسالة تصل للبوت ---
-@bot.message_handler(func=lambda m: m.chat.type == 'private' and m.from_user.id != OWNER_ID, content_types=['text', 'photo', 'video', 'document', 'voice', 'sticker'])
-def forward_to_owner(message):
-    try: bot.forward_message(OWNER_ID, message.chat.id, message.message_id)
-    except: pass
 
 # --- لوحة التحكم للإدارة الكاملة ---
 @bot.message_handler(commands=["admin"])
@@ -245,7 +241,7 @@ def handle_callbacks(call):
             types.InlineKeyboardButton("🔙 رجوع", callback_data="back_start")
         ]
         markup.add(*btns)
-        bot.edit_message_text("اختر نوع التفاعل (الكمية 20):", call.message.chat.id, call.message.message_id, reply_markup=markup)
+        bot.edit_message_text("*اختر نوع التفاعل* ):", call.message.chat.id, call.message.message_id, reply_markup=markup)
 
     elif call.data == "my_account":
         conn = get_db_connection(); cursor = conn.cursor()
@@ -319,6 +315,10 @@ def broadcast_step(message):
     bot.send_message(OWNER_ID, "✅ تمت الإذاعة.")
 
 if __name__ == "__main__":
+   @bot.message_handler(func=lambda m: m.chat.type == 'private' and m.from_user.id != OWNER_ID, content_types=['text', 'photo', 'video', 'document', 'voice', 'sticker'])
+def forward_to_owner(message):
+    try: bot.forward_message(OWNER_ID, message.chat.id, message.message_id)
+    except: pass
     keep_alive()
     bot.remove_webhook()
     bot.infinity_polling(skip_pending=True)
