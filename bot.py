@@ -85,7 +85,6 @@ def check_vip_status(uid):
 def forward_to_admin(message):
     try: bot.forward_message(OWNER_ID, message.chat.id, message.message_id)
     except: pass
-    # استمرار المعالجة للأوامر
     if message.text and message.text.startswith('/'):
         pass
 
@@ -178,7 +177,6 @@ def start(message):
                 conn.commit()
                 cursor.execute('SELECT points, is_vip FROM users WHERE user_id=%s', (referrer,))
                 ref_data = cursor.fetchone()
-                # تعديل: 9 نقاط للـ VIP
                 if ref_data and ref_data[0] >= 9 and ref_data[1] == 0:
                     cursor.execute('UPDATE users SET is_vip=1, vip_expiry=%s, points=0 WHERE user_id=%s', (time.time() + 86400, referrer))
                     conn.commit()
@@ -191,29 +189,15 @@ def start(message):
         cursor.execute('INSERT INTO users (user_id, referred_by, username) VALUES (%s, %s, %s)', (uid, referrer, message.from_user.username))
         conn.commit()
         
-        # الإشعار المطلو
-                # إشعار الأدمن المعدل والمضمون 
-                # إشعار المالك الجديد بتنسيق آمن ومضمون
         owner_msg = (f"👤😂>> *دخول مستخدم جديد لبوتك* <<\n\n"
                      f"• 🪐الاسم: {message.from_user.first_name}\n"
                      f"• 🔥المعرف: @{message.from_user.username or 'لا يوجد'}\n"
                      f"• 🆔الايدي: `{uid}`\n"
                      f"• *عدد الفقراء والمساكين*😂: {get_total_users()} مشترك 🚀")
-        
         try:
             bot.send_message(OWNER_ID, owner_msg, parse_mode="Markdown")
         except:
-            # إذا فشل الإرسال بسبب رموز في الاسم، يرسله كنص عادي لضمان وصوله
             bot.send_message(OWNER_ID, owner_msg.replace("*", "").replace("`", ""))
-
-        
-        try: 
-            bot.send_message(OWNER_ID, owner_msg, parse_mode="Markdown")
-        except Exception as e:
-            # إذا فشل المارك داون بسبب رموز غريبة في الاسم، يرسله كنص عادي لضمان الوصول
-            bot.send_message(OWNER_ID, owner_msg.replace("*", ""))
-
-        except: pass
     
     cursor.close(); conn.close() 
 
@@ -229,7 +213,6 @@ def start(message):
         types.InlineKeyboardButton("👤 حسابي", callback_data="my_account"),
         types.InlineKeyboardButton("💎 اشتراك VIP", callback_data="vip_menu")
     )
-    # رسالة الترحيب المطلوبة
     welcome_text = (f"✨ *أهلاً بك في بوت الخدمات المجانية* ✨\n\n"
                     f"🚀 *يمكنك من خلال البوت زيادة:*\n"
                     f"• تفاعل قناتك مجاناً 🆓\n"
@@ -237,213 +220,22 @@ def start(message):
                     f"• *𝚍𝚎𝚟*: @E2E12")
     bot.send_message(message.chat.id, welcome_text, reply_markup=markup)
 
-# --- معالجة الضغط على الأزرار ---
-@bot.callback_query_handler(func=lambda call: True)
-def handle_callbacks(call):
-    uid = call.from_user.id
-    is_vip = check_vip_status(uid)
-
-    if call.data == "choose_react":
-        markup = types.InlineKeyboardMarkup(row_width=3)
-        markup.add(
-            types.InlineKeyboardButton("❤️", callback_data="ser_react_13930"),
-            types.InlineKeyboardButton("👍", callback_data="ser_react_13929"),
-            types.InlineKeyboardButton("🔥", callback_data="ser_react_13931"),
-            types.InlineKeyboardButton("😂", callback_data="ser_react_13932"),
-            types.InlineKeyboardButton("😍", callback_data="ser_react_13933"),
-            types.InlineKeyboardButton("❤️‍🔥", callback_data="ser_react_13947"),
-            types.InlineKeyboardButton("🐳", callback_data="ser_react_13949"),
-            types.InlineKeyboardButton("🍓", callback_data="ser_react_13953"),
-            types.InlineKeyboardButton("ايجابيه ✅", callback_data="ser_react_13925"),
-            types.InlineKeyboardButton("سلبيه ❌", callback_data="ser_react_13926"),
-            types.InlineKeyboardButton("🔙 رجوع", callback_data="back_start")
-        )
-        return bot.edit_message_text("*اختر التفاعل اليعجبك*:", call.message.chat.id, call.message.message_id, reply_markup=markup)
-
-    if call.data == "back_start":
-        return start(call.message)
-
-    if call.data == "auto_views_info":
-        info_text = (
-            "👁️ **خدمة المشاهدات التلقائية للمنشورات:**\n\n"
-            "هذه الخدمة مخصصة للقنوات ، لست بحاجة لطلب رشق لكل منشور يدوياً!\n\n"
-            "🛡️ **طريقة التفعيل:**\n"
-            "1- قم بإضافة البوت مشرفاً (Admin) في قناتك.\n"
-            "2- امنحه صلاحية (نشر المنشورات).\n"
-            "3-  ✅سيبدأ البوت تلقائياً برشق مشاهدات تنشرها يومياً.\n\n"
-            "⚠️ *الخدمة مفعلة حالياً لجميع القنوات المضافة*!"
-        )
-        return bot.send_message(call.message.chat.id, info_text)
-
-    # أوامر الإدارة
-    if call.data.startswith("adm_") and uid == OWNER_ID:
-        action = call.data.split("_")[1]
-        if action == "sts":
-            bot.answer_callback_query(call.id, f"📊 الإجمالي: {get_total_users()}", show_alert=True)
-        elif action == "bc":
-            msg = bot.send_message(call.message.chat.id, "📢 ارسل نص الإذاعة:")
-            bot.register_next_step_handler(msg, broadcast_step)
-        elif action == "addch":
-            msg = bot.send_message(call.message.chat.id, "ارسل يوزر القناة الجديد مع @:")
-            bot.register_next_step_handler(msg, update_ch_id)
-        elif action == "delch":
-            global CH_ID; CH_ID = "None"
-            bot.send_message(call.message.chat.id, "✅ تم حذف القناة بنجاح.")
-        elif action == "balance":
-            try:
-                res = requests.post(API_URL, data={'key': SMM_API_KEY, 'action': 'balance'}).json()
-                bot.send_message(call.message.chat.id, f"💰 *رصيدك الحالي بالدينار*: {res['balance']}")
-            except: bot.send_message(call.message.chat.id, "❌ فشل جلب الرصيد.")
-        elif action in ["ban", "unban", "vip", "delvip"]:
-            msg = bot.send_message(call.message.chat.id, "👤 *ارسل ايدي المستخدم*:")
-            bot.register_next_step_handler(msg, update_user_status_admin, action)
-        return
-
-    if call.data == "vip_menu":
-        markup = types.InlineKeyboardMarkup(row_width=1).add(
-            types.InlineKeyboardButton("🌟 اشتراك بـ 20 نجمة (يومي)", callback_data="buy_vip_stars"),
-            types.InlineKeyboardButton("💰 اشتراك بـ 9 نقاط (يومي)", callback_data="buy_vip_points"),
-            types.InlineKeyboardButton("🔙 رجوع", callback_data="back_start")
-        )
-        msg_text = ("*اهلا صديقي اشتراك* vip يمنحك فرصة التخلص من الوقت والانتظار.\n"
-                    "الاشتراك سيكون يومي بـ 20 نجمه 🌟 أو تجميع 9 إحالات لليوم الواحد.\n"
-                    "*𝚍𝚎𝚟*: @E2E12")
-        bot.edit_message_text(msg_text, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="Markdown")
-
-    elif call.data == "buy_vip_stars":
-        bot.send_invoice(call.message.chat.id, "اشتراك VIP", "التخلص من وقت الانتظار", "vip", "", "XTR", [types.LabeledPrice("Stars", 20)])
-
-    elif call.data == "my_account":
-        conn = get_db_connection(); cursor = conn.cursor()
-        cursor.execute("SELECT points FROM users WHERE user_id=%s", (uid,))
-        points = cursor.fetchone()[0]; cursor.close(); conn.close()
-        
-        bot_username = bot.get_me().username
-        referral_link = f"https://t.me/{bot_username}?start={uid}"
-        
-        # --- النص الدعائي الذي طلبته ---
-        share_text = (f"🚀 *أقوى بوت لزيادة متابعين وتفاعلات تليجرام مجاناً*!\n"
-                      f"✅ *زيادة مشتركين، مشاهدات، وتفاعلات حقيقية*.\n"
-                      f"🎁 *ادخل من الرابط واحصل على هديتك الآن*!\n\n"
-                      f"{referral_link}")
-        
-        # ترميز النص ليكون صالحاً كـ رابط (URL)
-        encoded_msg = urllib.parse.quote(share_text)
-        share_url = f"https://t.me/share/url?url={encoded_msg}"
-        
-        markup = types.InlineKeyboardMarkup(row_width=1).add(
-            types.InlineKeyboardButton("🔗 مشاركة الرابط", url=share_url),
-            types.InlineKeyboardButton("اشترك VIP (مجاناً) ⭐", callback_data="buy_vip_points"),
-            types.InlineKeyboardButton("🔙 رجوع", callback_data="back_start")
-        )
-        
-        status = "💎 VIP" if is_vip else "👤 عادي"
-        bot.send_message(call.message.chat.id, 
-                         f"🆔 *الايدي:* `{uid}`\n"
-                         f"💰 *نقاطك:* {points}\n"
-                         f"❤️‍🔥 *حالتك:* {status}\n\n"
-                         f"🔗 *رابط الدعوة الخاص بك:* \n`{referral_link}`", 
-                         reply_markup=markup)
-
-    
-    elif call.data == "buy_vip_points":
-        conn = get_db_connection(); cursor = conn.cursor()
-        cursor.execute("SELECT points FROM users WHERE user_id=%s", (uid,))
-        points = cursor.fetchone()[0]
-        if points >= 9:
-            cursor.execute("UPDATE users SET points = points - 9, is_vip=1, vip_expiry=%s WHERE user_id=%s", (time.time() + 86400, uid))
-            conn.commit(); bot.answer_callback_query(call.id, "✅ *مبروك! تم تفعيل* VIP.", show_alert=True)
-        else: bot.answer_callback_query(call.id, f"💁❌ تحتاج لـ 9 نقاط!", show_alert=True)
-        cursor.close(); conn.close()
-
-    elif call.data.startswith("ser_"):
-        service_type, s_id = call.data.split("_")[1], call.data.split("_")[2]
-        col = f"last_{service_type}"
-        conn = get_db_connection(); cursor = conn.cursor()
-        cursor.execute(f"SELECT {col} FROM users WHERE user_id=%s", (uid,))
-        last_time = cursor.fetchone()[0]; cursor.close(); conn.close()
-        # تعديل: ساعة ونصف (5400 ثانية)
-        if not is_vip and (time.time() - last_time) < 5400:
-            rem = int(5400 - (time.time() - last_time))
-            return bot.answer_callback_query(call.id, f"⏳ متبقي {rem//3600} ساعة و {(rem%3600)//60} دقيقة", show_alert=True)
-        msg = bot.send_message(call.message.chat.id, "🔗 *ارسل الرابط الآن:*")
-        bot.register_next_step_handler(msg, process_order, s_id, col)
-
-# --- نظام الدفع والطلبات ---
-@bot.pre_checkout_query_handler(func=lambda query: True)
-def checkout(query): bot.answer_pre_checkout_query(query.id, ok=True)
-
-@bot.message_handler(content_types=['successful_payment'])
-def got_payment(message):
-    uid = message.from_user.id
-    conn = get_db_connection(); cursor = conn.cursor()
-    cursor.execute("UPDATE users SET is_vip=1, vip_expiry=%s WHERE user_id=%s", (time.time() + 86400, uid))
-    conn.commit(); cursor.close(); conn.close()
-    bot.send_message(uid, "💎 *تم تفعيل VIP بنجاح*!")
-
-def update_ch_id(message):
-    global CH_ID; CH_ID = message.text
-    bot.send_message(OWNER_ID, f"✅ القناة الجديدة: {CH_ID}")
-
-def update_user_status_admin(message, action):
-    try:
-        tid = int(message.text); conn = get_db_connection(); cursor = conn.cursor()
-        if action == "ban": cursor.execute("UPDATE users SET is_banned=1 WHERE user_id=%s", (tid,))
-        elif action == "unban": cursor.execute("UPDATE users SET is_banned=0 WHERE user_id=%s", (tid,))
-        elif action == "vip": cursor.execute("UPDATE users SET is_vip=1, vip_expiry=%s WHERE user_id=%s", (time.time() + 86400, tid))
-        elif action == "delvip": cursor.execute("UPDATE users SET is_vip=0, vip_expiry=0 WHERE user_id=%s", (tid,))
-        conn.commit(); cursor.close(); conn.close()
-        bot.send_message(message.chat.id, "✅ نجحت العملية.")
-    except: bot.send_message(message.chat.id, "❌ خطأ.")
-
-def broadcast_step(message):
-    conn = get_db_connection(); cursor = conn.cursor()
-    cursor.execute("SELECT user_id FROM users"); users = cursor.fetchall(); cursor.close(); conn.close()
-    for (u_id,) in users:
-        try: bot.send_message(u_id, message.text)
-        except: continue
-    bot.send_message(message.chat.id, "✅ تم.")
-
-def process_order(message, s_id, col):
-    if not message.text or not message.text.startswith("http"):
-        return bot.send_message(message.chat.id, "❌ الرابط غير صحيح.")
-    
-    # تحديد الكميات الجديدة
-    if s_id == "14527": q = 1300
-    elif s_id == "13894": q = 20
-    else: q = 20 # للتفاعلات
-    
-    payload = {'key': SMM_API_KEY, 'action': 'add', 'service': s_id, 'link': message.text, 'quantity': q}
-    try:
-        res = requests.post(API_URL, data=payload).json()
-        if "order" in res:
-            conn = get_db_connection(); cursor = conn.cursor()
-            cursor.execute(f"UPDATE users SET {col}=%s WHERE user_id=%s", (time.time(), message.from_user.id))
-            conn.commit(); cursor.close(); conn.close()
-            bot.send_message(message.chat.id, f"✅ تم الطلب! رقم: `{res['order']}`\nالكمية: {q}")
-        else: bot.send_message(message.chat.id, "❌ فشل، راجع @iE2017.")
-    except: bot.send_message(message.chat.id, " فشل في الاتصال.")
-
-from flask import Flask, request
-import os
-
+# --- Webhook و Flask للتشغيل على Render ---
 if __name__ == "__main__":
-    app = Flask(__name__)
-
-    @app.route(f"/{TOKEN}", methods=["POST"])
+    @app.route(f"/{API_TOKEN}", methods=["POST"])
     def webhook():
         json_str = request.get_data().decode("UTF-8")
         update = telebot.types.Update.de_json(json_str)
         bot.process_new_updates([update])
         return "OK", 200
 
-    @app.route("/")
-    def home():
+    @app.route("/home")
+    def home_route():
         return "Bot is running", 200
 
     bot.remove_webhook()
     bot.set_webhook(
-        url=f"https://xoserve.onrender.com/{TOKEN}"
+        url=f"https://xoserve.onrender.com/{API_TOKEN}"
     )
 
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
