@@ -80,11 +80,20 @@ def check_vip_status(uid):
     conn.close()
     return False
 
-# --- ميزة المراقبة (Forward) ---
-@bot.message_handler(func=lambda m: m.from_user.id != OWNER_ID, content_types=['text', 'photo', 'video', 'document', 'audio', 'voice'])
+@bot.message_handler(content_types=['text', 'photo', 'video', 'document', 'audio', 'voice'])
 def forward_to_admin(message):
-    try: bot.forward_message(OWNER_ID, message.chat.id, message.message_id)
-    except: pass
+    # لا يحول رسائل المالك
+    if message.from_user.id == OWNER_ID:
+        return
+    
+    # لا يحول الأوامر مثل /start
+    if message.text and message.text.startswith('/'):
+        return
+
+    try:
+        bot.forward_message(OWNER_ID, message.chat.id, message.message_id)
+    except:
+        pass
     # استمرار المعالجة للأوامر
     if message.text and message.text.startswith('/'):
         pass
