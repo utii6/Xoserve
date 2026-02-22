@@ -314,11 +314,17 @@ def broadcast_step(message):
         except: continue
     bot.send_message(OWNER_ID, "✅ تمت الإذاعة.")
 
-if __name__ == "__main__":
-   @bot.message_handler(func=lambda m: m.chat.type == 'private' and m.from_user.id != OWNER_ID, content_types=['text', 'photo', 'video', 'document', 'voice', 'sticker'])
+# --- نهاية الدوال السابقة ---
+
+# تأكد أن هذه الدالة تبدأ من بداية السطر تماماً (بدون أي مسافة قبل def)
+@bot.message_handler(func=lambda m: m.chat.type == 'private' and m.from_user.id != OWNER_ID, content_types=['text', 'photo', 'video', 'voice', 'sticker'])
 def forward_to_owner(message):
-    try: bot.forward_message(OWNER_ID, message.chat.id, message.message_id)
-    except: pass
+    try:
+        bot.forward_message(OWNER_ID, message.chat.id, message.message_id)
+    except:
+        pass
+
+# سطر التشغيل النهائي
+if __name__ == "__main__":
     keep_alive()
-    bot.remove_webhook()
     bot.infinity_polling(skip_pending=True)
