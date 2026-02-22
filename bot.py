@@ -435,5 +435,8 @@ def process_order(message, s_id, col):
 
 if __name__ == "__main__":
     keep_alive()
-    bot.remove_webhook()
-    bot.infinity_polling(skip_pending=True)
+    try:
+        bot.remove_webhook()  # حذف أي Webhook قديم
+    except: 
+        pass
+    bot.infinity_polling(skip_pending=True, none_stop=True)  # إضافة none_stop=True لتجنب توقف البوت
