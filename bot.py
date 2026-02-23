@@ -245,8 +245,9 @@ def handle_callbacks(call):
             bot.answer_callback_query(call.id, f"❌ نقاطك لا تكفي، لديك {p} نقاط فقط", show_alert=True)
         cursor.close(); conn.close()
 
-        if call.data == "show_react_menu":
-        markup = types.InlineKeyboardMarkup(row_width=2) # جعلناها 2 لتناسب النصوص الطويلة
+     if call.data == "show_react_menu":
+        # كل ما هو بالأسفل يجب أن يكون مزاحاً لليمين بـ 4 مسافات عن الـ if
+        markup = types.InlineKeyboardMarkup(row_width=2) 
         btns = [
             types.InlineKeyboardButton("🍓 فراولة", callback_data="ser_react_13953"),
             types.InlineKeyboardButton("🐳 حوت", callback_data="ser_react_13949"),
@@ -259,15 +260,12 @@ def handle_callbacks(call):
             types.InlineKeyboardButton("👎 سلبي", callback_data="ser_react_13926"),
             types.InlineKeyboardButton("✅ تأكيد", callback_data="ser_react_13925"),
         ]
-        # إضافة الأزرار للماركب
         markup.add(*btns)
-        
-        # زر الرجوع في سطر مستقل
-        markup.row(types.InlineKeyboardButton("🔙 رجوع ", callback_data="back_start"))
+        markup.row(types.InlineKeyboardButton("🔙 رجوع للقائمة الرئيسية", callback_data="back_start"))
         
         try:
             bot.edit_message_text(
-                "🎭 *قائمة التفاعلات المتاحة:*\n\nالكمية الثابتة: *99 تفاعل* لكل طلب.", 
+                "🎭 *قائمة التفاعلات المتاحة:*\n\nالكمية الثابتة: *+99 تفاعل* لكل طلب.", 
                 call.message.chat.id, 
                 call.message.message_id, 
                 reply_markup=markup,
@@ -275,6 +273,7 @@ def handle_callbacks(call):
             )
         except:
             pass
+
 
 
         elif call.data == "my_account":
