@@ -245,10 +245,21 @@ def handle_callbacks(call):
             bot.answer_callback_query(call.id, f"❌ نقاطك لا تكفي، لديك {p} نقاط فقط", show_alert=True)
         cursor.close(); conn.close()
 
-    elif call.data == "show_react_menu":
+    if call.data == "show_react_menu":
         markup = types.InlineKeyboardMarkup(row_width=3)
-        btns = [types.InlineKeyboardButton("🍓", callback_data="ser_react_13953"), types.InlineKeyboardButton("🐳", callback_data="ser_react_13949"), types.InlineKeyboardButton("🔥", callback_data="ser_react_13931"), types.InlineKeyboardButton("❤️", callback_data="ser_react_13930"), types.InlineKeyboardButton("🔙 رجوع", callback_data="back_start")]
-        markup.add(*btns)
+        btns = [
+            types.InlineKeyboardButton("🍓", callback_data="ser_react_13953"),
+            types.InlineKeyboardButton("🐳", callback_data="ser_react_13949"),
+            types.InlineKeyboardButton("❤️‍🔥", callback_data="ser_react_13947"),
+            types.InlineKeyboardButton("😍", callback_data="ser_react_13933"),
+            types.InlineKeyboardButton("😂", callback_data="ser_react_13932"),
+            types.InlineKeyboardButton("🔥", callback_data="ser_react_13931"),
+            types.InlineKeyboardButton("❤️", callback_data="ser_react_13930"),
+            types.InlineKeyboardButton("👍", callback_data="ser_react_13929"),
+            types.InlineKeyboardButton("سلبية 👎", callback_data="ser_react_13926"),
+            types.InlineKeyboardButton("إيجابية ✅", callback_data="ser_react_13925"),
+            types.InlineKeyboardButton("🔙 رجوع", callback_data="back_start")
+        ]
         bot.edit_message_text("*اختر نوع التفاعل*:", call.message.chat.id, call.message.message_id, reply_markup=markup)
 
     elif call.data == "my_account":
