@@ -245,9 +245,9 @@ def handle_callbacks(call):
             bot.answer_callback_query(call.id, f"❌ نقاطك لا تكفي، لديك {p} نقاط فقط", show_alert=True)
         cursor.close(); conn.close()
 
-     if call.data == "show_react_menu":
-        # كل ما هو بالأسفل يجب أن يكون مزاحاً لليمين بـ 4 مسافات عن الـ if
-        markup = types.InlineKeyboardMarkup(row_width=2) 
+    # تأكد أن المسافة هنا (قبل if) هي نفس المسافة قبل الأوامر السابقة
+    if call.data == "show_react_menu":
+        markup = types.InlineKeyboardMarkup(row_width=2)
         btns = [
             types.InlineKeyboardButton("🍓 فراولة", callback_data="ser_react_13953"),
             types.InlineKeyboardButton("🐳 حوت", callback_data="ser_react_13949"),
@@ -261,43 +261,36 @@ def handle_callbacks(call):
             types.InlineKeyboardButton("✅ تأكيد", callback_data="ser_react_13925"),
         ]
         markup.add(*btns)
-        markup.row(types.InlineKeyboardButton("🔙 رجوع للقائمة الرئيسية", callback_data="back_start"))
+        markup.row(types.InlineKeyboardButton("🔙 رجوع", callback_data="back_start"))
         
         try:
             bot.edit_message_text(
-                "🎭 *قائمة التفاعلات المتاحة:*\n\nالكمية الثابتة: *+99 تفاعل* لكل طلب.", 
-                call.message.chat.id, 
-                call.message.message_id, 
-                reply_markup=markup,
-                parse_mode="Markdown"
+                "🎭 *قائمة التفاعلات المتاحة:*\nالكمية: +99 تفاعل لكل طلب.",
+                call.message.chat.id,
+                call.message.message_id,
+                reply_markup=markup
             )
         except:
             pass
 
-
-
-        elif call.data == "my_account":
+    elif call.data == "my_account":
+        # هذا القسم أيضاً يجب أن يكون على نفس مستوى محاذاة if السابقة
         conn = get_db_connection(); cursor = conn.cursor()
         cursor.execute("SELECT points FROM users WHERE user_id=%s", (uid,))
         res = cursor.fetchone()
         points = res[0] if res else 0
         cursor.close(); conn.close()
         
-        # جلب الإحصائيات والمعلومات
         total_users = get_total_users()
         bot_username = bot.get_me().username
         referral_link = f"https://t.me/{bot_username}?start={uid}"
         status = "💎 VIP" if is_vip else "👤 عادي"
         
-        # نص المشاركة الجاهز
-        share_text = f"🚀 أقوى بوت لزيادة المتابعين والتفاعلات مجاناً!\n🎁 ادخل واحصل على هديتك الآن عبر الرابط:\n{referral_link}"
-        
-        # إنشاء الأزرار
+        share_text = f"🚀 أقوى بوت خدمات مجانية!\n{referral_link}"
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton("🔗 مشاركة رابط الدعوة", url=f"https://t.me/share/url?url={urllib.parse.quote(share_text)}"))
         markup.add(types.InlineKeyboardButton("🔙 رجوع", callback_data="back_start"))
 
-        # تنسيق الرسالة كما طلبت
         account_msg = (
             f"🆔 *الايدي:* `{uid}`\n"
             f"💰 *نقاطك:* {points}\n"
@@ -306,11 +299,11 @@ def handle_callbacks(call):
             f"🔗 *رابط الدعوة الخاص بك:*\n"
             f"{referral_link}"
         )
-        
         try:
-            bot.edit_message_text(account_msg, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="Markdown")
+            bot.edit_message_text(account_msg, call.message.chat.id, call.message.message_id, reply_markup=markup)
         except:
-            bot.send_message(call.message.chat.id, account_msg, reply_markup=markup, parse_mode="Markdown")
+            bot.send_message(call.message.chat.id, account_msg, reply_markup=markup)
+
 
     elif call.data == "vip_menu":
         markup = types.InlineKeyboardMarkup(row_width=1).add(
