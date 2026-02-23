@@ -202,7 +202,7 @@ def handle_callbacks(call):
 
     if call.data == "auto_views_info":
         info_text = ("👁️ **خدمة المشاهدات التلقائية:**\n\n"
-                    "البوت يرشق 1300 مشاهدة لكل منشور جديد تلقائياً.\n"
+                    "البوت يرشق مشاهدات لكل منشور جديد تلقائياً.\n"
                     "فقط أضف البوت مشرفاً في قناتك.")
         return bot.send_message(call.message.chat.id, info_text)
 
@@ -245,35 +245,74 @@ def handle_callbacks(call):
             bot.answer_callback_query(call.id, f"❌ نقاطك لا تكفي، لديك {p} نقاط فقط", show_alert=True)
         cursor.close(); conn.close()
 
-    if call.data == "show_react_menu":
-        markup = types.InlineKeyboardMarkup(row_width=3)
+        if call.data == "show_react_menu":
+        markup = types.InlineKeyboardMarkup(row_width=2) # جعلناها 2 لتناسب النصوص الطويلة
         btns = [
-            types.InlineKeyboardButton("🍓", callback_data="ser_react_13953"),
-            types.InlineKeyboardButton("🐳", callback_data="ser_react_13949"),
-            types.InlineKeyboardButton("❤️‍🔥", callback_data="ser_react_13947"),
-            types.InlineKeyboardButton("😍", callback_data="ser_react_13933"),
-            types.InlineKeyboardButton("😂", callback_data="ser_react_13932"),
-            types.InlineKeyboardButton("🔥", callback_data="ser_react_13931"),
-            types.InlineKeyboardButton("❤️", callback_data="ser_react_13930"),
-            types.InlineKeyboardButton("👍", callback_data="ser_react_13929"),
-            types.InlineKeyboardButton("سلبية 👎", callback_data="ser_react_13926"),
-            types.InlineKeyboardButton("إيجابية ✅", callback_data="ser_react_13925"),
-            types.InlineKeyboardButton("🔙 رجوع", callback_data="back_start")
+            types.InlineKeyboardButton("🍓 فراولة", callback_data="ser_react_13953"),
+            types.InlineKeyboardButton("🐳 حوت", callback_data="ser_react_13949"),
+            types.InlineKeyboardButton("❤️‍🔥 قلب نار", callback_data="ser_react_13947"),
+            types.InlineKeyboardButton("😍 حب", callback_data="ser_react_13933"),
+            types.InlineKeyboardButton("😂 ضحك", callback_data="ser_react_13932"),
+            types.InlineKeyboardButton("🔥 حريق", callback_data="ser_react_13931"),
+            types.InlineKeyboardButton("❤️ قلب", callback_data="ser_react_13930"),
+            types.InlineKeyboardButton("👍 إيجابي", callback_data="ser_react_13929"),
+            types.InlineKeyboardButton("👎 سلبي", callback_data="ser_react_13926"),
+            types.InlineKeyboardButton("✅ تأكيد", callback_data="ser_react_13925"),
         ]
-        bot.edit_message_text("*اختر نوع التفاعل*:", call.message.chat.id, call.message.message_id, reply_markup=markup)
+        # إضافة الأزرار للماركب
+        markup.add(*btns)
+        
+        # زر الرجوع في سطر مستقل
+        markup.row(types.InlineKeyboardButton("🔙 رجوع ", callback_data="back_start"))
+        
+        try:
+            bot.edit_message_text(
+                "🎭 *قائمة التفاعلات المتاحة:*\n\nالكمية الثابتة: *99 تفاعل* لكل طلب.", 
+                call.message.chat.id, 
+                call.message.message_id, 
+                reply_markup=markup,
+                parse_mode="Markdown"
+            )
+        except:
+            pass
 
-    elif call.data == "my_account":
+
+        elif call.data == "my_account":
         conn = get_db_connection(); cursor = conn.cursor()
         cursor.execute("SELECT points FROM users WHERE user_id=%s", (uid,))
-        points = cursor.fetchone()[0]
+        res = cursor.fetchone()
+        points = res[0] if res else 0
         cursor.close(); conn.close()
+        
+        # جلب الإحصائيات والمعلومات
+        total_users = get_total_users()
         bot_username = bot.get_me().username
         referral_link = f"https://t.me/{bot_username}?start={uid}"
-        share_text = f"🚀 أقوى بوت خدمات مجانية!\n{referral_link}"
-        markup = types.InlineKeyboardMarkup().add(types.InlineKeyboardButton("🔗 مشاركة رابط الدعوة", url=f"https://t.me/share/url?url={urllib.parse.quote(share_text)}"))
         status = "💎 VIP" if is_vip else "👤 عادي"
-        bot.send_message(call.message.chat.id, f"👤 *الايدي:* `{uid}`\n💰 *نقاطك:* {points}\n⭐ *حالتك:* {status}", reply_markup=markup)
-    
+        
+        # نص المشاركة الجاهز
+        share_text = f"🚀 أقوى بوت لزيادة المتابعين والتفاعلات مجاناً!\n🎁 ادخل واحصل على هديتك الآن عبر الرابط:\n{referral_link}"
+        
+        # إنشاء الأزرار
+        markup = types.InlineKeyboardMarkup()
+        markup.add(types.InlineKeyboardButton("🔗 مشاركة رابط الدعوة", url=f"https://t.me/share/url?url={urllib.parse.quote(share_text)}"))
+        markup.add(types.InlineKeyboardButton("🔙 رجوع", callback_data="back_start"))
+
+        # تنسيق الرسالة كما طلبت
+        account_msg = (
+            f"🆔 *الايدي:* `{uid}`\n"
+            f"💰 *نقاطك:* {points}\n"
+            f"❤️‍🔥 *حالتك:* {status}\n"
+            f"👥 *عدد المستخدمين الكلي:* {total_users}\n\n"
+            f"🔗 *رابط الدعوة الخاص بك:*\n"
+            f"{referral_link}"
+        )
+        
+        try:
+            bot.edit_message_text(account_msg, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="Markdown")
+        except:
+            bot.send_message(call.message.chat.id, account_msg, reply_markup=markup, parse_mode="Markdown")
+
     elif call.data == "vip_menu":
         markup = types.InlineKeyboardMarkup(row_width=1).add(
             types.InlineKeyboardButton("🌟 اشتراك بـ 20 نجمة (يومي)", callback_data="buy_vip_stars"),
