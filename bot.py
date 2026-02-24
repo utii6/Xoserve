@@ -210,11 +210,19 @@ def handle_callbacks(call):
     return security.process_captcha(bot, call, get_db_connection, show_main_menu)
 
     # استجابة أزرار الإدارة
+        if call.data.startswith("v_"):
+        return security.process_captcha(bot, call, get_db_connection, show_main_menu)
+
+    # استجابة أزرار الإدارة (يجب أن تكون على نفس مستوى الـ if السابقة)
     if call.data.startswith("adm_") and uid == OWNER_ID:
         action = call.data.split("_")[1]
-               if action == "sts":
-            conn = get_db_connection(); cursor = conn.cursor()
-            
+        
+        # هنا كان الخطأ! يجب أن يكون 'if' تحت 'action' مباشرة بـ 4 مسافات
+        if action == "sts":
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            # ... باقي الكود الخاص بالإحصائيات ...
+
             # 1. إجمالي المستخدمين
             cursor.execute('SELECT COUNT(*) FROM users')
             total = cursor.fetchone()[0]
