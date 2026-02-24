@@ -138,6 +138,8 @@ def auto_view_posts(message):
 # --- أمر /start (تفاعل 🔥 + إحالات 9) ---
 @bot.message_handler(commands=['start'])
 def start(message):
+     if not security.check_user(bot, message, get_db_connection): return
+
     uid = message.from_user.id
     args = message.text.split()
     
