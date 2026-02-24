@@ -485,10 +485,16 @@ def forward_to_owner(message):
     except: pass
 
 import time
-
-# تأكد أن هذا الجزء في نهاية الملف تماماً
 if __name__ == "__main__":
+    # 1. إزالة أي ويب هوك قديم (للتأكد من نظافة الاتصال)
     bot.remove_webhook()
-    print("Bot is starting...")
+    
+    # 2. انتظار لمدة 3 ثوانٍ للسماح لتليجرام بإنهاء الجلسات العالقة
+    import time
+    time.sleep(3)
+    
+    print("Bot is starting after cleanup...")
+    
+    # 3. التشغيل مع تجاهل الرسائل القديمة
     bot.infinity_polling(skip_pending=True)
 
