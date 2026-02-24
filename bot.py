@@ -207,7 +207,7 @@ def handle_callbacks(call):
         return bot.send_message(call.message.chat.id, info_text)
 
     if call.data.startswith("v_"):
-    return security.process_captcha(bot, call, get_db_connection, show_main_menu)
+        return security.process_captcha(bot, call, get_db_connection, show_main_menu)
 
     # استجابة أزرار الإدارة
     if call.data.startswith("v_"):
