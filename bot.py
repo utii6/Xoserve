@@ -421,7 +421,7 @@ def process_order(message, s_id, col, s_type):
             
             bot.send_message(message.chat.id, success_msg, parse_mode="Markdown")
         else: 
-            bot.send_message(message.chat.id, "❌ فشل من المصدر.")
+            bot.send_message(message.chat.id, "❌ فشل راجع @IE2017 .")
 
 
     except Exception as e:
