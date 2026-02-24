@@ -424,6 +424,9 @@ def process_order(message, s_id, col, s_type):
             bot.send_message(message.chat.id, "❌ فشل من المصدر.")
 
 
+def broadcast_step(    except Exception as e:
+        print(f"Error in previous step: {e}")
+
 def broadcast_step(message):
     conn = get_db_connection(); cursor = conn.cursor()
     cursor.execute("SELECT user_id FROM users"); users = cursor.fetchall()
@@ -433,6 +436,7 @@ def broadcast_step(message):
             bot.send_message(u_id, message.text)
         except: 
             continue
+
     bot.send_message(message.chat.id, "✅ *تم الانتهاء من الإرسال للجميع*.")
 
 
