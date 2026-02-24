@@ -488,13 +488,7 @@ import time
 
 # تأكد أن هذا الجزء في نهاية الملف تماماً
 if __name__ == "__main__":
-    # تشغيل Flask في الخلفية (اختياري إذا كنت تحتاجه لـ Render)
-    # من الأفضل استدعاء Flask بشكل منفصل أو التأكد أنه لا يعيق البوت
-    
-    while True:
-        try:
-            print("Starting Bot...")
-            bot.infinity_polling(skip_pending=True, timeout=20)
-        except Exception as e:
-            print(f"Error occurred: {e}")
-            time.sleep(5)  # انتظر 5 ثوانٍ قبل إعادة المحاولة
+    bot.remove_webhook()
+    print("Bot is starting...")
+    bot.infinity_polling(skip_pending=True)
+
