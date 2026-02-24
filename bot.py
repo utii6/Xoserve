@@ -206,11 +206,11 @@ def handle_callbacks(call):
                     "فقط أضف البوت مشرفاً في قناتك.")
         return bot.send_message(call.message.chat.id, info_text)
 
-   if call.data.startswith("v_"):
+    if call.data.startswith("v_"):
     return security.process_captcha(bot, call, get_db_connection, show_main_menu)
 
     # استجابة أزرار الإدارة
-        if call.data.startswith("v_"):
+    if call.data.startswith("v_"):
         return security.process_captcha(bot, call, get_db_connection, show_main_menu)
 
     # استجابة أزرار الإدارة (يجب أن تكون على نفس مستوى الـ if السابقة)
