@@ -1,4 +1,5 @@
 import os, time, psycopg2, requests, telebot, urllib.parse
+import security  # السطر المفقود الذي سيحل مشكلة الـ NameError
 from flask import Flask
 from threading import Thread
 from telebot import types
