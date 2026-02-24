@@ -88,7 +88,7 @@ def admin_panel(message):
         types.InlineKeyboardButton("📊 احصائيات", callback_data="adm_sts"),
         types.InlineKeyboardButton("💵 رصيد الموقع", callback_data="adm_balance")
     )
-    bot.send_message(message.chat.id, "🛠 *لوحة تحكم الإدارة الكاملة:*", reply_markup=markup)
+    bot.send_message(message.chat.id, "🛠 *لوحة تحكم الوالي والسلطان:*", reply_markup=markup)
 
 # --- إشعار إضافة البوت لقناة/مجموعة ---
 @bot.my_chat_member_handler()
@@ -206,11 +206,48 @@ def handle_callbacks(call):
                     "فقط أضف البوت مشرفاً في قناتك.")
         return bot.send_message(call.message.chat.id, info_text)
 
+   if call.data.startswith("v_"):
+    return security.process_captcha(bot, call, get_db_connection, show_main_menu)
+
     # استجابة أزرار الإدارة
     if call.data.startswith("adm_") and uid == OWNER_ID:
         action = call.data.split("_")[1]
-        if action == "sts":
-            bot.answer_callback_query(call.id, f"📊 عدد المستخدمين: {get_total_users()}", show_alert=True)
+               if action == "sts":
+            conn = get_db_connection(); cursor = conn.cursor()
+            
+            # 1. إجمالي المستخدمين
+            cursor.execute('SELECT COUNT(*) FROM users')
+            total = cursor.fetchone()[0]
+            
+            # 2. عدد المحظورين
+            cursor.execute('SELECT COUNT(*) FROM users WHERE is_banned = 1')
+            banned = cursor.fetchone()[0]
+            
+            # 3. عدد مستخدمي VIP
+            cursor.execute('SELECT COUNT(*) FROM users WHERE is_vip = 1')
+            vips = cursor.fetchone()[0]
+            
+            # 4. إجمالي النقاط المتداولة
+            cursor.execute('SELECT SUM(points) FROM users')
+            all_points = cursor.fetchone()[0] or 0
+            
+            cursor.close(); conn.close()
+
+            stats_text = (
+                "📊 **إحصائيات البوت الشاملة**\n"
+                "━━━━━━━━━━━━━━━\n"
+                f"👥 *إجمالي الفقراء والمساكين* : `{total}`\n"
+                f"💎 *المشتركين والمتعافين* VIP: `{vips}`\n"
+                f"🚫 *المحظورين الزنادقه* : `{banned}`\n"
+                f"💰 *إجمالي نقاط المملكه* : `{all_points}`\n"
+                "━━━━━━━━━━━━━━━\n"
+                "✅ *الحالة: *تعمل بكفاءة"
+            )
+            
+            # تعديل الرسالة لإظهار التفاصيل كاملة
+            bot.edit_message_text(stats_text, call.message.chat.id, call.message.message_id, 
+                                 reply_markup=call.message.reply_markup, parse_mode="Markdown")
+
         elif action == "bc":
             msg = bot.send_message(call.message.chat.id, "📢 ارسل نص الإذاعة:")
             bot.register_next_step_handler(msg, broadcast_step)
@@ -362,13 +399,22 @@ def process_order(message, s_id, col, s_type):
     qty = 1300 if s_type == "view" else 20
     try:
         res = requests.post(API_URL, data={'key': SMM_API_KEY, 'action': 'add', 'service': s_id, 'link': message.text, 'quantity': qty}).json()
-        if "order" in res:
+                if "order" in res:
+            order_id = res["order"]  # جلب رقم الطلب من استجابة الموقع
             conn = get_db_connection(); cursor = conn.cursor()
             cursor.execute(f"UPDATE users SET {col}=%s WHERE user_id=%s", (time.time(), message.from_user.id))
             conn.commit(); cursor.close(); conn.close()
-            bot.send_message(message.chat.id, f"✅ تم طلب {qty} بنجاح!")
-        else: bot.send_message(message.chat.id, "❌ فشل من المصدر.")
-    except: pass
+            
+            # تعديل رسالة النجاح لإظهار رقم الطلب
+            success_msg = (f"✅ **تم الطلب بنجاح!**\n\n"
+                           f"🔢 رقم الطلب: `{order_id}`\n"
+                           f"📦 الكمية: {qty}\n"
+                           f"⏳ حالة الطلب: قيد المعالجة")
+            
+            bot.send_message(message.chat.id, success_msg, parse_mode="Markdown")
+        else: 
+            bot.send_message(message.chat.id, "❌ فشل من المصدر.")
+
 
 def broadcast_step(message):
     conn = get_db_connection(); cursor = conn.cursor()
