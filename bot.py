@@ -429,9 +429,12 @@ def broadcast_step(message):
     cursor.execute("SELECT user_id FROM users"); users = cursor.fetchall()
     cursor.close(); conn.close()
     for (u_id,) in users:
-        try: bot.send_message(u_id, message.text)
-        except: continue
-    bot.send_message(OWNER_ID, "✅ تمت الإذاعة.")
+        try: 
+            bot.send_message(u_id, message.text)
+        except: 
+            continue
+    bot.send_message(message.chat.id, "✅ *تم الانتهاء من الإرسال للجميع*.")
+
 
 # --- دفع النجوم ---
 @bot.pre_checkout_query_handler(func=lambda q: True)
