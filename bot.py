@@ -1,8 +1,27 @@
-import os, time, psycopg2, requests, telebot, urllib.parse
-import security  # السطر المفقود الذي سيحل مشكلة الـ NameError
+import os, time, psycopg2, requests, telebot, urllib.parse, security
 from flask import Flask
 from threading import Thread
 from telebot import types
+
+# --- كود إرضاء Render (يجب أن يبدأ فوراً) ---
+app = Flask(__name__)
+
+@app.route('/')
+def health_check():
+    return "Bot is Alive", 200
+
+def run_flask():
+    # هذا الجزء يفتح المنفذ الذي يبحث عنه Render
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
+
+# تشغيل السيرفر في خلفية منفصلة قبل أي شيء آخر
+Thread(target=run_flask).start()
+# ------------------------------------------
+
+# بعد ذلك يكمل كود البوت الخاص بك...
+# API_TOKEN = '...'
+
 
 # --- إعداد الخادم (Keep-Alive) ---
 app = Flask('')
