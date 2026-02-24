@@ -407,8 +407,8 @@ def process_order(message, s_id, col, s_type):
     qty = 1300 if s_type == "view" else 20
     try:
         res = requests.post(API_URL, data={'key': SMM_API_KEY, 'action': 'add', 'service': s_id, 'link': message.text, 'quantity': qty}).json()
-                if "order" in res:
-                      order_id = res["order"]  # جلب رقم الطلب من استجابة الموقع
+        if "order" in res:
+            order_id = res["order"]  # جلب رقم الطلب من استجابة الموقع
             conn = get_db_connection(); cursor = conn.cursor()
             cursor.execute(f"UPDATE users SET {col}=%s WHERE user_id=%s", (time.time(), message.from_user.id))
             conn.commit(); cursor.close(); conn.close()
