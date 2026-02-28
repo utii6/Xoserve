@@ -34,6 +34,7 @@ def keep_alive(): Thread(target=run, daemon=True).start()
 API_TOKEN = os.getenv('BOT_TOKEN')
 SMM_API_KEY = os.getenv('SMM_API_KEY')
 CH_ID = os.getenv('CHANNEL_USERNAME')
+CH_ID_2 = "@IE2017"
 API_URL = os.getenv('API_URL')
 DATABASE_URL = os.getenv('DATABASE_URL')
 OWNER_ID = 5581457665 
@@ -166,7 +167,7 @@ def start(message):
 
     
     try:
-        bot.set_message_reaction(message.chat.id, message.message_id, [types.ReactionTypeEmoji("🔥")], is_big=False)
+        bot.set_message_reaction(message.chat.id, message.message_id, [types.ReactionTypeEmoji("❤️‍🔥")], is_big=False)
     except: pass
 
     conn = get_db_connection(); cursor = conn.cursor()
@@ -205,8 +206,18 @@ def start(message):
     cursor.close(); conn.close() 
 
     if not is_subscribed(uid):
-        markup = types.InlineKeyboardMarkup().add(types.InlineKeyboardButton("مَـدار📢", url=f"https://t.me/{CH_ID.replace('@','')}"))
-        return bot.send_message(message.chat.id, f"⚠️ *يجب الاشتراك هنا {CH_ID} !*", reply_markup=markup)
+        # إنشاء الأزرار للقناتين
+        markup = types.InlineKeyboardMarkup(row_width=1)
+        btn1 = types.InlineKeyboardButton("مَـدار📢", url=f"https://t.me/{CH_ID.replace('@','')}")
+        btn2 = types.InlineKeyboardButton("قناة التحديثات📢", url="https://t.me/IE2017")
+        markup.add(btn1, btn2)
+        
+        return bot.send_message(
+            message.chat.id, 
+            f"⚠️ *عذراً، يجب عليك الاشتراك في قنوات البوت أولاً:*\n1️⃣ {CH_ID}\n2️⃣ @IE2017", 
+            reply_markup=markup, 
+            parse_mode="Markdown"
+        )
 
     markup = types.InlineKeyboardMarkup(row_width=2).add(
         types.InlineKeyboardButton("👥 زيادة مشتركين", callback_data="ser_sub_13894"),
