@@ -205,19 +205,27 @@ def start(message):
     
     cursor.close(); conn.close() 
 
-    if not is_subscribed(uid):
-        # إنشاء الأزرار للقناتين
-        markup = types.InlineKeyboardMarkup(row_width=1)
-        btn1 = types.InlineKeyboardButton("مَـدار📢", url=f"https://t.me/{CH_ID.replace('@','')}")
-        btn2 = types.InlineKeyboardButton("قناة التحديثات📢", url="https://t.me/IE2017")
-        markup.add(btn1, btn2)
+def is_subscribed(uid):
+    try:
+        # فحص القناتين (تأكد من وجود CH_ID و المعرف الثاني)
+        status1 = bot.get_chat_member(CH_ID, uid).status
+        status2 = bot.get_chat_member("@IE2017", uid).status
         
-        return bot.send_message(
-            message.chat.id, 
-            f"⚠️ *عذراً، يجب عليك الاشتراك في قنوات البوت أولاً:*\n1️⃣ {CH_ID}\n2️⃣ @IE2017", 
-            reply_markup=markup, 
-            parse_mode="Markdown"
-        )
+        ok = ['member', 'administrator', 'creator']
+        return status1 in ok and status2 in ok
+    except:
+        return False
+
+# الكود الذي يوضع داخل استقبال الرسائل (مثل /start)
+if not is_subscribed(message.from_user.id):
+    markup = types.InlineKeyboardMarkup(row_width=1)
+    btn1 = types.InlineKeyboardButton("📢 قناة مَـدار", url=f"https://t.me/{CH_ID.replace('@','')}")
+    btn2 = types.InlineKeyboardButton("📢 قناة التحديثات", url="https://t.me/IE2017")
+    markup.add(btn1, btn2)
+    
+    bot.send_message(message.chat.id, "⚠️ **يجب الاشتراك في القناه أولاً:**", reply_markup=markup, parse_mode="Markdown")
+    return
+
 
     markup = types.InlineKeyboardMarkup(row_width=2).add(
         types.InlineKeyboardButton("👥 زيادة مشتركين", callback_data="ser_sub_13894"),
