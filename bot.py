@@ -157,31 +157,42 @@ def auto_view_posts(message):
     cursor.close(); conn.close()
 
 # --- أمر /start (تفاعل 🔥 + إحالات 9) ---
+def is_subscribed(uid):
+    try:
+        # فحص القناتين (تأكد من وجود CH_ID و المعرف الثاني)
+        status1 = bot.get_chat_member(CH_ID, uid).status
+        status2 = bot.get_chat_member("@IE2017", uid).status
+        
+        ok = ['member', 'administrator', 'creator']
+        return status1 in ok and status2 in ok
+    except:
+        return False
+
 @bot.message_handler(commands=['start'])
-def start_command(message): # هنا 'message' تم تعريفها بنجاح
+def start_command(message):
     uid = message.from_user.id
+    args = message.text.split() # تعريف الأرجومنت لنظام الإحالة
     
-    # التحقق من الاشتراك الإجباري
+    # 1. فحص الاشتراك الإجباري
     if not is_subscribed(uid):
-        markup = types.InlineKeyboardMarkup(row_width=1)
+        markup_sub = types.InlineKeyboardMarkup(row_width=1)
         btn1 = types.InlineKeyboardButton("📢 قناة مَـدار", url=f"https://t.me/{CH_ID.replace('@','')}")
         btn2 = types.InlineKeyboardButton("📢 قناة التحديثات", url="https://t.me/IE2017")
-        markup.add(btn1, btn2)
-        
-        bot.send_message(message.chat.id, "⚠️ **يجب الاشتراك في القناه أولاً:**", reply_markup=markup, parse_mode="Markdown")
-        return # هنا 'return' تعمل بشكل صحيح لأنها داخل دالة (def)
+        markup_sub.add(btn1, btn2)
+        bot.send_message(message.chat.id, "⚠️ **يجب الاشتراك في القناه أولاً:**", reply_markup=markup_sub, parse_mode="Markdown")
+        return 
 
-    # إذا كان مشتركاً، يكمل البوت عمله هنا:
-    bot.reply_to(message, "أهلاً بك! أرسل الرابط الآن.")
-
-    
+    # 2. التفاعل التلقائي (القلب)
     try:
         bot.set_message_reaction(message.chat.id, message.message_id, [types.ReactionTypeEmoji("❤️‍🔥")], is_big=False)
     except: pass
 
-    conn = get_db_connection(); cursor = conn.cursor()
+    # 3. معالجة قاعدة البيانات (باند + إحالات + تسجيل)
+    conn = get_db_connection()
+    cursor = conn.cursor()
     cursor.execute('SELECT is_banned FROM users WHERE user_id=%s', (uid,))
     row = cursor.fetchone()
+    
     if row and row[0] == 1: 
         cursor.close(); conn.close()
         return
@@ -196,6 +207,7 @@ def start_command(message): # هنا 'message' تم تعريفها بنجاح
                 cursor.execute('SELECT points, is_vip FROM users WHERE user_id=%s', (referrer,))
                 ref_data = cursor.fetchone()
                 if ref_data and ref_data[0] >= 9 and ref_data[1] == 0:
+                    import time
                     cursor.execute('UPDATE users SET is_vip=1, vip_expiry=%s, points = points - 9 WHERE user_id=%s', (time.time() + 86400, referrer))
                     conn.commit()
                     try: bot.send_message(referrer, "🎊 *مبروك!* جمعت 9 إحالات وتم تفعيل الـ VIP!")
@@ -206,38 +218,15 @@ def start_command(message): # هنا 'message' تم تعريفها بنجاح
         
         owner_msg = (f"<< دخول نفـرر جديد لبوتك >>\n"
                      f"• الاسم😂: {message.from_user.first_name}\n"
-                     f"• المعرف💁: @{message.from_user.username or 'لا يوجد'}\n"
+                     f"• المعرف💁: @{message.from_user.username or '😂💔فقير وبلا يوزر'}\n"
                      f"• الايدي🆔: `{uid}`\n"
-                     f"• عدد مشتركينك الفقراء: {get_total_users()}")
+                     f"• *عدد مشتركيني الفقراء*🥹: {get_total_users()}")
         try: bot.send_message(OWNER_ID, owner_msg)
         except: pass
     
     cursor.close(); conn.close() 
 
-def is_subscribed(uid):
-    try:
-        # فحص القناتين (تأكد من وجود CH_ID و المعرف الثاني)
-        status1 = bot.get_chat_member(CH_ID, uid).status
-        status2 = bot.get_chat_member("@IE2017", uid).status
-        
-        ok = ['member', 'administrator', 'creator']
-        return status1 in ok and status2 in ok
-    except:
-        return False
-
-# الكود الذي يوضع داخل استقبال الرسائل (مثل /start)
-# إذا كان الكود خارج أي دالة (في جسم الملف الرئيسي)
-if not is_subscribed(message.from_user.id):
-    markup = types.InlineKeyboardMarkup(row_width=1)
-    btn1 = types.InlineKeyboardButton("📢 قناة مَـدار", url=f"https://t.me/{CH_ID.replace('@','')}")
-    btn2 = types.InlineKeyboardButton("📢 قناة التحديثات", url="https://t.me/IE2017")
-    markup.add(btn1, btn2)
-    
-    bot.send_message(message.chat.id, "⚠️ **يجب الاشتراك في القناه أولاً:**", reply_markup=markup, parse_mode="Markdown")
-    # لا تضع return هنا إذا كنت خارج الدالة
-
-
-
+    # 4. رسالة الترحيب النهائية وأزرار الخدمات
     markup = types.InlineKeyboardMarkup(row_width=2).add(
         types.InlineKeyboardButton("👥 زيادة مشتركين", callback_data="ser_sub_13894"),
         types.InlineKeyboardButton("👀 زيادة مشاهدات", callback_data="ser_view_14527"),
@@ -246,7 +235,13 @@ if not is_subscribed(message.from_user.id):
         types.InlineKeyboardButton("👤 حسابي", callback_data="my_account"),
         types.InlineKeyboardButton("💎 اشتراك VIP", callback_data="vip_menu")
     )
-    bot.send_message(message.chat.id, "*أهلاً بك في بوت الخدمات المجانية* 🆓\n*𝚍𝚎𝚟:* @E2E12 ✶ *𝙲𝙷:* @QD3QD ", reply_markup=markup)
+    
+    bot.send_message(
+        message.chat.id, 
+        "*أهلاً بك في بوت الخدمات المجانية* 🆓\n*𝚍𝚎𝚟:* @E2E12 ✶ *𝙲𝙷:* @QD3QD ", 
+        reply_markup=markup, 
+        parse_mode="Markdown"
+    )
 
 # --- معالجة الأزرار ---
 @bot.callback_query_handler(func=lambda call: True)
