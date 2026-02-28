@@ -158,12 +158,21 @@ def auto_view_posts(message):
 
 # --- أمر /start (تفاعل 🔥 + إحالات 9) ---
 @bot.message_handler(commands=['start'])
-def start(message):
-    if not security.check_user(bot, message, get_db_connection):
-        return
-
+def start_command(message): # هنا 'message' تم تعريفها بنجاح
     uid = message.from_user.id
-    args = message.text.split()
+    
+    # التحقق من الاشتراك الإجباري
+    if not is_subscribed(uid):
+        markup = types.InlineKeyboardMarkup(row_width=1)
+        btn1 = types.InlineKeyboardButton("📢 قناة مَـدار", url=f"https://t.me/{CH_ID.replace('@','')}")
+        btn2 = types.InlineKeyboardButton("📢 قناة التحديثات", url="https://t.me/IE2017")
+        markup.add(btn1, btn2)
+        
+        bot.send_message(message.chat.id, "⚠️ **يجب الاشتراك في القناه أولاً:**", reply_markup=markup, parse_mode="Markdown")
+        return # هنا 'return' تعمل بشكل صحيح لأنها داخل دالة (def)
+
+    # إذا كان مشتركاً، يكمل البوت عمله هنا:
+    bot.reply_to(message, "أهلاً بك! أرسل الرابط الآن.")
 
     
     try:
