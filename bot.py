@@ -217,6 +217,7 @@ def is_subscribed(uid):
         return False
 
 # الكود الذي يوضع داخل استقبال الرسائل (مثل /start)
+# إذا كان الكود خارج أي دالة (في جسم الملف الرئيسي)
 if not is_subscribed(message.from_user.id):
     markup = types.InlineKeyboardMarkup(row_width=1)
     btn1 = types.InlineKeyboardButton("📢 قناة مَـدار", url=f"https://t.me/{CH_ID.replace('@','')}")
@@ -224,7 +225,8 @@ if not is_subscribed(message.from_user.id):
     markup.add(btn1, btn2)
     
     bot.send_message(message.chat.id, "⚠️ **يجب الاشتراك في القناه أولاً:**", reply_markup=markup, parse_mode="Markdown")
-    return
+    # لا تضع return هنا إذا كنت خارج الدالة
+
 
 
     markup = types.InlineKeyboardMarkup(row_width=2).add(
@@ -235,7 +237,7 @@ if not is_subscribed(message.from_user.id):
         types.InlineKeyboardButton("👤 حسابي", callback_data="my_account"),
         types.InlineKeyboardButton("💎 اشتراك VIP", callback_data="vip_menu")
     )
-    bot.send_message(message.chat.id, "*أهلاً بك في بوت الخدمات المجانية* 🆓\n*𝚍𝚎𝚟:* @E2E12", reply_markup=markup)
+    bot.send_message(message.chat.id, "*أهلاً بك في بوت الخدمات المجانية* 🆓\n*𝚍𝚎𝚟:* @E2E12 ✶ *𝙲𝙷:* @QD3QD ", reply_markup=markup)
 
 # --- معالجة الأزرار ---
 @bot.callback_query_handler(func=lambda call: True)
