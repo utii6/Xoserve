@@ -246,6 +246,17 @@ def start_command(message):
 # --- معالجة الأزرار ---
 @bot.callback_query_handler(func=lambda call: True)
 def handle_callbacks(call):
+    # أضف هذين السطرين هنا مباشرة:
+    try: 
+        bot.answer_callback_query(call.id)
+    except: 
+        pass
+
+    # ثم تبدأ بقية شروط الأزرار الخاصة بك:
+    if call.data == "back_start":
+        start_command(call.message)
+    # ... بقية الـ elif الخاصة بك ...
+
     uid = call.from_user.id
     is_vip = check_vip_status(uid)
 
