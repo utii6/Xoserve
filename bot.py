@@ -422,7 +422,15 @@ def handle_callbacks(call):
         bot.register_next_step_handler(msg, process_order, s_id, col, service_type)
 
     elif call.data == "back_start":
-        start(call.message)
+        # حذف الرسالة القديمة لتجنب التكرار (اختياري)
+        try:
+            bot.delete_message(call.message.chat.id, call.message.message_id)
+        except: pass
+        
+        # استدعاء دالة البداية بالاسم الجديد
+        start_command(call.message)
+
+
 
 # --- منطق لوحة الإدارة ---
 def admin_action_step(message, action):
