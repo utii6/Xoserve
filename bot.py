@@ -426,7 +426,7 @@ def handle_callbacks(call):
         cursor.execute(f"SELECT {col} FROM users WHERE user_id=%s", (uid,))
         last_time = cursor.fetchone()[0]
         cursor.close(); conn.close()
-     if not is_vip and (time.time() - last_time) < 5400:
+        if not is_vip and (time.time() - last_time) < 5400:
             rem = int(5400 - (time.time() - last_time))
             try:
                 # محاولة إرسال الرسالة المنبثقة
