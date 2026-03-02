@@ -428,8 +428,15 @@ def handle_callbacks(call):
         cursor.close(); conn.close()
         if not is_vip and (time.time() - last_time) < 5400:
             rem = int(5400 - (time.time() - last_time))
-            return bot.answer_callback_query(call.id, f"⏳ متبقي {rem//60} دقيقة", show_alert=True)
-        msg = bot.send_message(call.message.chat.id, "🔗 *ارسل الرابط الآن:*")
+            # الاستبدال يتم هنا:
+            return bot.answer_callback_query(
+                call.id, 
+                text=f"⚠️ عذراً عزيزي\n\nمتبقي {rem//60} دقيقة و {rem%60} ثانية للطلب القادم.\n\n💎 اشترك في VIP لتجاوز وقت الانتظار!", 
+                show_alert=True
+            )
+        
+        # إذا لم يتحقق شرط الانتظار، يكمل البوت هنا
+        msg = bot.send_message(call.message.chat.id, "🔗 *ارسل الرابط حبيبي:*")
         bot.register_next_step_handler(msg, process_order, s_id, col, service_type)
 
     elif call.data == "back_start":
