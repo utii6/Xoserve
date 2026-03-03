@@ -502,7 +502,7 @@ def give_points_final(message, tid):
 def process_order(message, s_id, col, s_type):
     if not message.text or not message.text.startswith("http"):
         return bot.send_message(message.chat.id, "❌ الرابط غير صحيح.")
-    qty = 1300 if s_type == "view" else 20
+    qty = 800 if s_type == "view" else 50
     try:
         res = requests.post(API_URL, data={'key': SMM_API_KEY, 'action': 'add', 'service': s_id, 'link': message.text, 'quantity': qty}).json()
         if "order" in res:
