@@ -456,7 +456,6 @@ elif call.data.startswith("ser_"):
     )
     bot.register_next_step_handler(msg, process_order, s_id, col, service_type)
 
-
 # --- منطق لوحة الإدارة ---
 def admin_action_step(message, action):
     try:
