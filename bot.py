@@ -228,7 +228,7 @@ def start_command(message):
 
     # 4. رسالة الترحيب النهائية وأزرار الخدمات
     markup = types.InlineKeyboardMarkup(row_width=2).add(
-        types.InlineKeyboardButton("👥 زيادة مشتركين", callback_data="ser_sub_13894"),
+        types.InlineKeyboardButton("👥 زيادة مشتركين", callback_data="ser_sub_14681"),
         types.InlineKeyboardButton("👀 زيادة مشاهدات", callback_data="ser_view_14527"),
         types.InlineKeyboardButton("❤️ تفاعلات", callback_data="show_react_menu"),
         types.InlineKeyboardButton("👁️ مشاهدات تلقائية", callback_data="auto_views_info"),
@@ -238,7 +238,7 @@ def start_command(message):
     
     bot.send_message(
         message.chat.id, 
-        "*أهلاً بك في بوت الخدمات المجانية* 🆓\n*𝚍𝚎𝚟:* @E2E12 ✶ *𝙲𝙷:* @QD3QD ", 
+        "*أهلاً بك في بوت الخدمات المجانية* 🆓\n 𝚍𝚎𝚟: *@E2E12* ✶ 𝙲𝙷: *@QD3QD* ", 
         reply_markup=markup, 
         parse_mode="Markdown"
     )
@@ -263,7 +263,7 @@ def handle_callbacks(call):
     if call.data == "auto_views_info":
         info_text = ("👁️ **خدمة المشاهدات التلقائية:**\n\n"
                     "البوت يرشق مشاهدات لكل منشور جديد تلقائياً.\n"
-                    "فقط أضف البوت مشرفاً في قناتك.")
+                    "فقط أضف البوت مشرفاً في قناتك✅.")
         return bot.send_message(call.message.chat.id, info_text)
 
     if call.data.startswith("v_"):
@@ -426,22 +426,25 @@ def handle_callbacks(call):
         cursor.execute(f"SELECT {col} FROM users WHERE user_id=%s", (uid,))
         last_time = cursor.fetchone()[0]
         cursor.close(); conn.close()
-        if not is_vip and (time.time() - last_time) < 5400:
+                if not is_vip and (time.time() - last_time) < 5400:
             rem = int(5400 - (time.time() - last_time))
+            
+            # محاولة إظهار المنبثقة أولاً
             try:
-                # محاولة إرسال الرسالة المنبثقة
-                return bot.answer_callback_query(
+                bot.answer_callback_query(
                     call.id, 
-                    text=f"⚠️ عذراً عزيزي\n\nمتبقي {rem//60} دقيقة و {rem%60} ثانية للطلب القادم.\n\n💎 اشترك في VIP لتجاوز وقت الانتظار!", 
+                    text=f"⚠️ استغفر الله* انتظـر بعد* {rem//60} دقيقة و {rem%60} ثانية.", 
                     show_alert=True
                 )
-            except Exception as e:
-                # إذا فشلت المنبثقة لأي سبب، نرسلها كرسالة عادية لكي لا يتوقف البوت
-                return bot.send_message(call.message.chat.id, f"⏳ متبقي {rem//60} دقيقة و {rem%60} ثانية.")
+            except:
+                pass 
+            
+            # إرسال رسالة نصية كدعم إضافي (عشان نضمن المستخدم يشوف الوقت)
+            return bot.send_message(
+                call.message.chat.id, 
+                f"⏳ *استغفر الله*\n\nمتبقي: `{rem//60}` دقيقة و `{rem%60}` ثانية.\n\n💎 اشترك في VIP لطلب الخدمات بدون انتظار!"
+            )
 
-        # إذا لم يتحقق شرط الانتظار، يكمل البوت هنا
-        msg = bot.send_message(call.message.chat.id, "🔗 *ارسل الرابط الآن:*")
-        bot.register_next_step_handler(msg, process_order, s_id, col, service_type)
 
 
     elif call.data == "back_start":
@@ -496,7 +499,7 @@ def process_order(message, s_id, col, s_type):
             # تعديل رسالة النجاح لإظهار رقم الطلب
             success_msg = (f"✅ **تم الطلب بنجاح!**\n\n"
                            f"🔢 رقم الطلب: `{order_id}`\n"
-                           f"📦 الكمية: {qty}\n"
+                           f"📦 الكمية: +99\n"
                            f"⏳ حالة الطلب: قيد المعالجة")
             
             bot.send_message(message.chat.id, success_msg, parse_mode="Markdown")
