@@ -422,40 +422,34 @@ def handle_callbacks(call):
         parts = call.data.split("_")
         service_type, s_id = parts[1], parts[2]
         col = f"last_{service_type}"
-        conn = get_db_connection(); cursor = conn.cursor()
+        
+        # الاتصال بقاعدة البيانات وجلب الوقت بأمان
+        conn = get_db_connection()
+        cursor = conn.cursor()
         cursor.execute(f"SELECT {col} FROM users WHERE user_id=%s", (uid,))
-        last_time = cursor.fetchone()[0]
-        cursor.close(); conn.close()
+        res = cursor.fetchone()
+        
+        # التعديل الجوهري: إذا لم يجد بيانات (None) يجعل القيمة 0 لكي لا يتوقف البوت
+        last_time = res[0] if res and res[0] is not None else 0
+        
+        cursor.close()
+        conn.close()
+
+        # فحص وقت الانتظار (1.5 ساعة)
         if not is_vip and (time.time() - last_time) < 5400:
             rem = int(5400 - (time.time() - last_time))
-            
-            # محاولة إظهار المنبثقة أولاً
-            try:
-                bot.answer_callback_query(
-                    call.id, 
-                    text=f"⚠️ استغفر الله* انتظـر بعد* {rem//60} دقيقة و {rem%60} ثانية.", 
-                    show_alert=True
-                )
-            except:
-                pass 
-            
-            # إرسال رسالة نصية كدعم إضافي (عشان نضمن المستخدم يشوف الوقت)
-            return bot.send_message(
-                call.message.chat.id, 
-                f"⏳ *استغفر الله*\n\nمتبقي: `{rem//60}` دقيقة و `{rem%60}` ثانية.\n\n💎 اشترك في VIP لطلب الخدمات بدون انتظار!"
+            return bot.answer_callback_query(
+                call.id, 
+                f"⏳ استغفر الله بعدك {rem//3600} ساعة و {(rem%3600)//60} دقيقة", 
+                show_alert=True
             )
-
-
+        
+        # طلب الرابط والانتقال للخطوة التالية
+        msg = bot.send_message(call.message.chat.id, "🔗 *ارسل الرابط الآن:*", parse_mode="Markdown")
+        bot.register_next_step_handler(msg, process_order, s_id, col, service_type)
 
     elif call.data == "back_start":
-        # حذف الرسالة القديمة لتجنب التكرار (اختياري)
-        try:
-            bot.delete_message(call.message.chat.id, call.message.message_id)
-        except: pass
-        
-        # استدعاء دالة البداية بالاسم الجديد
-        start_command(call.message)
-
+        start(call.message)
 
 
 # --- منطق لوحة الإدارة ---
