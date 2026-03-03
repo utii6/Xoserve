@@ -438,18 +438,15 @@ elif call.data.startswith("ser_"):
 
     if not is_vip and elapsed < wait_seconds:
         rem = int(wait_seconds - elapsed)
-        
-        # حل مضمون لعرض الوقت
         try:
             bot.answer_callback_query(
                 callback_query_id=call.id,
-                text=f"⏳ استغفر الله بعدلك {rem // 3600} ساعة و {(rem % 3600) // 60} دقيقة",
+                text=f"⏳ لا يمكنك طلب الخدمة بعدك {rem // 3600} ساعة و {(rem % 3600) // 60} دقيقة",
                 show_alert=True
             )
         except Exception as e:
-            print("Error showing popup:", e)  # يظهر الخطأ في Console
-
-        return  # يمنع الانتقال للخطوة التالية
+            print("Error showing popup:", e)
+        return
 
     # السماح بالطلب إذا انتهى الوقت أو كان VIP
     msg = bot.send_message(
