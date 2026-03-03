@@ -418,43 +418,60 @@ def handle_callbacks(call):
         )
         bot.edit_message_text("الاشتراك يومي بـ 20 نجمه 🌟 أو 9 إحالة.", call.message.chat.id, call.message.message_id, reply_markup=markup)
 
-elif call.data.startswith("ser_"):
-    parts = call.data.split("_")
-    service_type, s_id = parts[1], parts[2]
-    col = f"last_{service_type}"
-
-    # الاتصال بقاعدة البيانات وجلب last_time
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute(f"SELECT {col} FROM users WHERE user_id=%s", (uid,))
-    res = cursor.fetchone()
-    last_time = res[0] if res and res[0] is not None else 0
-    cursor.close()
-    conn.close()
-
-    # مدة الانتظار بالثواني (1.5 ساعة)
-    wait_seconds = 5400
-    elapsed = time.time() - last_time
-
-    if not is_vip and elapsed < wait_seconds:
-        rem = int(wait_seconds - elapsed)
+    # تأكد أن هذا الجزء يقع تحت دالة handle_callbacks (أو أي دالة تعالج الـ call)
+    elif call.data.startswith("ser_"):
         try:
-            bot.answer_callback_query(
-                callback_query_id=call.id,
-                text=f"⏳ لا يمكنك طلب الخدمة بعدك {rem // 3600} ساعة و {(rem % 3600) // 60} دقيقة",
-                show_alert=True
-            )
-        except Exception as e:
-            print("Error showing popup:", e)
-        return
+            # 1. تفكيك بيانات الزر
+            parts = call.data.split("_")
+            service_type = parts[1]
+            s_id = parts[2]
+            col = f"last_{service_type}"
+            uid = call.from_user.id  # تأكد من تعريف uid هنا
 
-    # السماح بالطلب إذا انتهى الوقت أو كان VIP
-    msg = bot.send_message(
-        call.message.chat.id,
-        "🔗 *ارسل الرابط الآن:*",
-        parse_mode="Markdown"
-    )
-    bot.register_next_step_handler(msg, process_order, s_id, col, service_type)
+            # 2. جلب آخر وقت طلب من قاعدة البيانات
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute(f"SELECT {col} FROM users WHERE user_id=%s", (uid,))
+            res = cursor.fetchone()
+            # حماية الكود من القيم الفارغة (None)
+            last_time = res[0] if res and res[0] is not None else 0
+            cursor.close()
+            conn.close()
+
+            # 3. حساب الوقت المنقضي
+            wait_seconds = 5400  # ساعة ونصف
+            elapsed = time.time() - last_time
+
+            # 4. فحص شرط الوقت والـ VIP
+            # ملاحظة: استدعاء دالة check_vip_status(uid) يجب أن يكون قبل هذا السطر
+            if not is_vip and elapsed < wait_seconds:
+                rem = int(wait_seconds - elapsed)
+                hours = rem // 3600
+                minutes = (rem % 3600) // 60
+                
+                # إظهار التنبيه المنبثق للمستخدم
+                bot.answer_callback_query(
+                    callback_query_id=call.id,
+                    text=f"⏳ متبقي لديك: {hours} ساعة و {minutes} دقيقة.",
+                    show_alert=True
+                )
+                return  # الخروج من الدالة لعدم طلب الرابط
+
+            # 5. إذا انتهى الوقت أو كان VIP، نطلب الرابط
+            msg = bot.send_message(
+                call.message.chat.id,
+                "🔗 *ارسل الرابط الآن:*",
+                parse_mode="Markdown"
+            )
+            bot.register_next_step_handler(msg, process_order, s_id, col, service_type)
+
+        except Exception as e:
+            print(f"Error in ser_ handler: {e}")
+            bot.answer_callback_query(call.id, text="⚠️ حدث خطأ فني.")
+
+    elif call.data == "back_start":
+        # كود العودة للبداية
+        pass 
 
 # --- منطق لوحة الإدارة ---
 def admin_action_step(message, action):
