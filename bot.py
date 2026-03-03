@@ -418,38 +418,46 @@ def handle_callbacks(call):
         )
         bot.edit_message_text("الاشتراك يومي بـ 20 نجمه 🌟 أو 9 إحالة.", call.message.chat.id, call.message.message_id, reply_markup=markup)
 
-    elif call.data.startswith("ser_"):
-        parts = call.data.split("_")
-        service_type, s_id = parts[1], parts[2]
-        col = f"last_{service_type}"
-        
-        # الاتصال بقاعدة البيانات وجلب الوقت بأمان
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute(f"SELECT {col} FROM users WHERE user_id=%s", (uid,))
-        res = cursor.fetchone()
-        
-        # التعديل الجوهري: إذا لم يجد بيانات (None) يجعل القيمة 0 لكي لا يتوقف البوت
-        last_time = res[0] if res and res[0] is not None else 0
-        
-        cursor.close()
-        conn.close()
+elif call.data.startswith("ser_"):
+    parts = call.data.split("_")
+    service_type, s_id = parts[1], parts[2]
+    col = f"last_{service_type}"
 
-        # فحص وقت الانتظار (1.5 ساعة)
-        if not is_vip and (time.time() - last_time) < 5400:
-            rem = int(5400 - (time.time() - last_time))
-            return bot.answer_callback_query(
-                call.id, 
-                f"⏳ استغفر الله بعدك {rem//3600} ساعة و {(rem%3600)//60} دقيقة", 
+    # الاتصال بقاعدة البيانات وجلب last_time
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(f"SELECT {col} FROM users WHERE user_id=%s", (uid,))
+    res = cursor.fetchone()
+    last_time = res[0] if res and res[0] is not None else 0
+    cursor.close()
+    conn.close()
+
+    # مدة الانتظار بالثواني (1.5 ساعة)
+    wait_seconds = 5400
+    elapsed = time.time() - last_time
+
+    if not is_vip and elapsed < wait_seconds:
+        rem = int(wait_seconds - elapsed)
+        
+        # حل مضمون لعرض الوقت
+        try:
+            bot.answer_callback_query(
+                callback_query_id=call.id,
+                text=f"⏳ استغفر الله بعدلك {rem // 3600} ساعة و {(rem % 3600) // 60} دقيقة",
                 show_alert=True
             )
-        
-        # طلب الرابط والانتقال للخطوة التالية
-        msg = bot.send_message(call.message.chat.id, "🔗 *ارسل الرابط الآن:*", parse_mode="Markdown")
-        bot.register_next_step_handler(msg, process_order, s_id, col, service_type)
+        except Exception as e:
+            print("Error showing popup:", e)  # يظهر الخطأ في Console
 
-    elif call.data == "back_start":
-        start(call.message)
+        return  # يمنع الانتقال للخطوة التالية
+
+    # السماح بالطلب إذا انتهى الوقت أو كان VIP
+    msg = bot.send_message(
+        call.message.chat.id,
+        "🔗 *ارسل الرابط الآن:*",
+        parse_mode="Markdown"
+    )
+    bot.register_next_step_handler(msg, process_order, s_id, col, service_type)
 
 
 # --- منطق لوحة الإدارة ---
