@@ -2,6 +2,7 @@ import os, time, psycopg2, requests, telebot, urllib.parse, security
 from flask import Flask
 from threading import Thread
 from telebot import types
+from captcha import check_user, process_captcha
 
 # --- كود إرضاء Render (يجب أن يبدأ فوراً) ---
 app = Flask(__name__)
@@ -170,8 +171,16 @@ def is_subscribed(uid):
 
 @bot.message_handler(commands=['start'])
 def start_command(message):
+
+    # فحص المستخدم أولاً
+    if not check_user(bot, message, get_db_connection):
+        return  # إذا جديد يتوقف هنا إلى أن يحل الكابتشا
+
     uid = message.from_user.id
-    args = message.text.split() # تعريف الأرجومنت لنظام الإحالة
+    args = message.text.split()
+
+    # بعدها يكمل كودك الطبيعي هنا
+    show_main_menu(message)
     
     # 1. فحص الاشتراك الإجباري
     if not is_subscribed(uid):
