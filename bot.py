@@ -179,9 +179,7 @@ def start_command(message):
     uid = message.from_user.id
     args = message.text.split()
 
-    # بعدها يكمل كودك الطبيعي هنا
-    show_main_menu(message)
-    
+
     # 1. فحص الاشتراك الإجباري
     if not is_subscribed(uid):
         markup_sub = types.InlineKeyboardMarkup(row_width=1)
