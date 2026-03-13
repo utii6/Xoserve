@@ -2,15 +2,16 @@ import os, time, psycopg2, requests, telebot, urllib.parse
 from flask import Flask
 from threading import Thread
 from telebot import types
-from telebot import types
 
-# أضف هذه الأسطر بدقة كما هي:
+# دعم ألوان الأزرار
 if not hasattr(types.InlineKeyboardButton, 'style'):
     types.InlineKeyboardButton.ATTRIBUTE_WHITELIST.append('style')
 
 from captcha import check_user, process_captcha
+
+
 def show_main_menu(message):
-    bot.send_message(message.chat.id, "✅ تم التحقق يحلو أرسل /start  .")
+    bot.send_message(message.chat.id, "✅ تم التحقق يحلو أرسل /start .")
 # --- كود إرضاء Render (يجب أن يبدأ فوراً) ---
 app = Flask(__name__)
 
@@ -246,32 +247,37 @@ def start_command(message):
     cursor.close(); conn.close() 
 
     # 4. رسالة الترحيب النهائية وأزرار الخدمات الملونة (API 9.4)
-    markup = types.InlineKeyboardMarkup(row_width=2)
-    
-    # 1. تعريف الأزرار (بدون وضع الألوان داخل الأقواس)
-    btn_sub   = types.InlineKeyboardButton("👤 زيادة مشتركين", callback_data="ser_sub_14681")
-    btn_view  = types.InlineKeyboardButton("👀 زيادة مشاهدات", callback_data="ser_view_14527")
-    btn_react = types.InlineKeyboardButton("❤️ تفاعلات", callback_data="show_react_menu")
-    btn_auto  = types.InlineKeyboardButton("👁️ مشاهدات تلقائية", callback_data="auto_views_info")
-    btn_acc   = types.InlineKeyboardButton("👤 حسابي", callback_data="my_account")
-    btn_vip   = types.InlineKeyboardButton("💎 اشتراك VIP", callback_data="vip_menu")
+markup = types.InlineKeyboardMarkup(row_width=2)
 
-    # 2. تلوين الأزرار (هنا نستخدم style بدلاً من color وفي سطر جديد)
-    btn_react.style = "danger"   # أحمر
-    btn_auto.style  = "primary"  # أزرق
-    btn_acc.style   = "primary"  # أزرق
-    btn_vip.style   = "success"  # أخضر (للاشتراك المميز)
+# دالة إنشاء زر مع اللون
+def btn(text, data, style=None):
+    b = types.InlineKeyboardButton(text, callback_data=data)
+    if style:
+        b.style = style
+    return b
 
-    # 3. إضافة الأزرار للمارك اب
-    markup.add(btn_sub, btn_view, btn_react, btn_auto, btn_acc, btn_vip)
+# الأزرار
+btn_sub   = btn("👤 زيادة مشتركين", "ser_sub_14681")
+btn_view  = btn("👀 زيادة مشاهدات", "ser_view_14527")
 
-    # 4. إرسال الرسالة
-    bot.send_message(
-        message.chat.id, 
-        "*أهلاً بك في بوت الخدمات المجانية* 🆓\n 𝚍𝚎𝚟: *@E2E12* ✶ 𝙲𝙷: *@QD3QD* ", 
-        reply_markup=markup, 
-        parse_mode="Markdown"
-    )
+btn_react = btn("❤️ تفاعلات", "show_react_menu", "danger")   # أحمر
+btn_auto  = btn("👁️ مشاهدات تلقائية", "auto_views_info", "primary")  # أزرق
+
+btn_acc   = btn("👤 حسابي", "my_account", "primary")  # أزرق
+btn_vip   = btn("💎 اشتراك VIP", "vip_menu", "success")  # أخضر
+
+# ترتيب الأزرار
+markup.add(btn_sub, btn_view)
+markup.add(btn_react, btn_auto)
+markup.add(btn_acc, btn_vip)
+
+# إرسال الرسالة
+bot.send_message(
+    message.chat.id,
+    "*أهلاً بك في بوت الخدمات المجانية* 🆓\n 𝚍𝚎𝚟: *@E2E12*✶",
+    reply_markup=markup,
+    parse_mode="Markdown"
+)
 
 
 
