@@ -240,15 +240,23 @@ def start_command(message):
     cursor.close(); conn.close() 
 
     # 4. رسالة الترحيب النهائية وأزرار الخدمات الملونة (API 9.4)
-    markup = types.InlineKeyboardMarkup(row_width=2)
+        markup = types.InlineKeyboardMarkup(row_width=2)
     markup.add(
-        types.InlineKeyboardButton("👥 زيادة مشتركين", callback_data="ser_sub_14681", color="green"),
-        types.InlineKeyboardButton("👀 زيادة مشاهدات", callback_data="ser_view_14527", color="green"),
-        types.InlineKeyboardButton("❤️ تفاعلات", callback_data="show_react_menu", color="red"),
-        types.InlineKeyboardButton("👁️ مشاهدات تلقائية", callback_data="auto_views_info", color="blue"),
-        types.InlineKeyboardButton("👤 حسابي", callback_data="my_account", color="blue"),
-        types.InlineKeyboardButton("💎 اشتراك VIP", callback_data="vip_menu", color="gold")
+        # success = الأخضر
+        types.InlineKeyboardButton("👥 زيادة مشتركين", callback_data="ser_sub_14681", color="success"),
+        types.InlineKeyboardButton("👀 زيادة مشاهدات", callback_data="ser_view_14527", color="success"),
+        
+        # danger = الأحمر
+        types.InlineKeyboardButton("❤️ تفاعلات", callback_data="show_react_menu", color="danger"),
+        
+        # primary = الأزرق
+        types.InlineKeyboardButton("👁️ مشاهدات تلقائية", callback_data="auto_views_info", color="primary"),
+        types.InlineKeyboardButton("👤 حسابي", callback_data="my_account", color="primary"),
+        
+        # ملاحظة: VIP غالباً ما يأخذ 'primary' أو 'warning' حسب دعم المكتبة
+        types.InlineKeyboardButton("💎 اشتراك VIP", callback_data="vip_menu", color="primary")
     )
+
 
     bot.send_message(
         message.chat.id, 
