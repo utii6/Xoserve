@@ -253,24 +253,26 @@ def start_command(message):
 # --- معالجة الأزرار ---
 @bot.callback_query_handler(func=lambda call: True)
 def handle_callbacks(call):
-    # أضف هذين السطرين هنا مباشرة:
-    try: 
+
+    try:
         bot.answer_callback_query(call.id)
-    except: 
+    except:
         pass
 
-    # ثم تبدأ بقية شروط الأزرار الخاصة بك:
+    # كابتشا (يجب أن يكون أول شرط)
+    if call.data.startswith("v_"):
+        return security.process_captcha(bot, call, get_db_connection, show_main_menu)
+
     if call.data == "back_start":
         start_command(call.message)
-    # ... بقية الـ elif الخاصة بك ...
 
     uid = call.from_user.id
     is_vip = check_vip_status(uid)
 
     if call.data == "auto_views_info":
-        info_text = ("👁️ **خدمة المشاهدات التلقائية:**\n\n"
-                    "البوت يرشق مشاهدات لكل منشور جديد تلقائياً.\n"
-                    "فقط أضف البوت مشرفاً في قناتك✅.")
+        info_text = ("👁️ خدمة المشاهدات التلقائية:\n\n"
+                     "البوت يرشق مشاهدات لكل منشور جديد تلقائياً.\n"
+                     "فقط أضف البوت مشرفاً في قناتك.")
         return bot.send_message(call.message.chat.id, info_text)
 
     if call.data.startswith("v_"):
