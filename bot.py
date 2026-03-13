@@ -172,25 +172,24 @@ def is_subscribed(uid):
 
 @bot.message_handler(commands=['start'])
 def start_command(message):
-
-    # فحص المستخدم أولاً
+    # فحص المستخدم أولاً (الكابتشا)
     if not check_user(bot, message, get_db_connection):
-        return  # إذا جديد يتوقف هنا إلى أن يحل الكابتشا
+        return 
 
     uid = message.from_user.id
     args = message.text.split()
 
-
-    # 1. فحص الاشتراك الإجباري
+    # 1. فحص الاشتراك الإجباري (مع إضافة ألوان للأزرار لتنبيه المستخدم)
     if not is_subscribed(uid):
         markup_sub = types.InlineKeyboardMarkup(row_width=1)
-        btn1 = types.InlineKeyboardButton("📢 قناة مَـدار", url=f"https://t.me/{CH_ID.replace('@','')}")
-        btn2 = types.InlineKeyboardButton("📢 قناة التحديثات", url="https://t.me/IE2017")
+        # جعلنا الأزرار باللون الرمادي (gray) ليركز المستخدم على فعل الاشتراك
+        btn1 = types.InlineKeyboardButton("📢 قناة مَـدار", url=f"https://t.me/{CH_ID.replace('@','')}", color="gray")
+        btn2 = types.InlineKeyboardButton("📢 قناة التحديثات", url="https://t.me/IE2017", color="gray")
         markup_sub.add(btn1, btn2)
-        bot.send_message(message.chat.id, "⚠️ **يجب الاشتراك في القناه أولاً:**", reply_markup=markup_sub, parse_mode="Markdown")
+        bot.send_message(message.chat.id, "⚠️ **يجب الاشتراك في القنوات أولاً لاستخدام البوت:**", reply_markup=markup_sub, parse_mode="Markdown")
         return 
 
-    # 2. التفاعل التلقائي (القلب)
+    # 2. التفاعل التلقائي (إضافة حركة جميلة فور الدخول)
     try:
         bot.set_message_reaction(message.chat.id, message.message_id, [types.ReactionTypeEmoji("❤️‍🔥")], is_big=False)
     except: pass
@@ -212,18 +211,24 @@ def start_command(message):
             if referrer != uid:
                 cursor.execute('UPDATE users SET points = points + 1 WHERE user_id=%s', (referrer,))
                 conn.commit()
+                # إبلاغ المحيل بالنقاط
+                try: bot.send_message(referrer, f"👤 دخل شخص جديد عن طريق رابطك!\n💰 نقاطك الحالية: تم إضافة 1 نقطة.")
+                except: pass
+                
+                # فحص تفعيل VIP التلقائي
                 cursor.execute('SELECT points, is_vip FROM users WHERE user_id=%s', (referrer,))
                 ref_data = cursor.fetchone()
                 if ref_data and ref_data[0] >= 9 and ref_data[1] == 0:
                     import time
                     cursor.execute('UPDATE users SET is_vip=1, vip_expiry=%s, points = points - 9 WHERE user_id=%s', (time.time() + 86400, referrer))
                     conn.commit()
-                    try: bot.send_message(referrer, "🎊 *مبروك!* جمعت 9 إحالات وتم تفعيل الـ VIP!")
+                    try: bot.send_message(referrer, "🎊 *مبروك!* جمعت 9 إحالات وتم تفعيل الـ VIP لمدة 24 ساعة!")
                     except: pass
         
         cursor.execute('INSERT INTO users (user_id, referred_by, username) VALUES (%s, %s, %s)', (uid, referrer, message.from_user.username))
         conn.commit()
         
+        # إشعار المالك (أصلحنا الايموجي والنص)
         owner_msg = (f"<< دخول نفـرر جديد لبوتك >>\n"
                      f"• الاسم😂: {message.from_user.first_name}\n"
                      f"• المعرف💁: @{message.from_user.username or '😂💔فقير وبلا يوزر'}\n"
@@ -234,22 +239,24 @@ def start_command(message):
     
     cursor.close(); conn.close() 
 
-    # 4. رسالة الترحيب النهائية وأزرار الخدمات
-    markup = types.InlineKeyboardMarkup(row_width=2).add(
-        types.InlineKeyboardButton("👥 زيادة مشتركين", callback_data="ser_sub_14681"),
-        types.InlineKeyboardButton("👀 زيادة مشاهدات", callback_data="ser_view_14527"),
-        types.InlineKeyboardButton("❤️ تفاعلات", callback_data="show_react_menu"),
-        types.InlineKeyboardButton("👁️ مشاهدات تلقائية", callback_data="auto_views_info"),
-        types.InlineKeyboardButton("👤 حسابي", callback_data="my_account"),
-        types.InlineKeyboardButton("💎 اشتراك VIP", callback_data="vip_menu")
+    # 4. رسالة الترحيب النهائية وأزرار الخدمات الملونة (API 9.4)
+    markup = types.InlineKeyboardMarkup(row_width=2)
+    markup.add(
+        types.InlineKeyboardButton("👥 زيادة مشتركين", callback_data="ser_sub_14681", color="green"),
+        types.InlineKeyboardButton("👀 زيادة مشاهدات", callback_data="ser_view_14527", color="green"),
+        types.InlineKeyboardButton("❤️ تفاعلات", callback_data="show_react_menu", color="red"),
+        types.InlineKeyboardButton("👁️ مشاهدات تلقائية", callback_data="auto_views_info", color="blue"),
+        types.InlineKeyboardButton("👤 حسابي", callback_data="my_account", color="blue"),
+        types.InlineKeyboardButton("💎 اشتراك VIP", callback_data="vip_menu", color="gold")
     )
-    
+
     bot.send_message(
         message.chat.id, 
         "*أهلاً بك في بوت الخدمات المجانية* 🆓\n 𝚍𝚎𝚟: *@E2E12* ✶ 𝙲𝙷: *@QD3QD* ", 
         reply_markup=markup, 
         parse_mode="Markdown"
     )
+
 
 # --- معالجة الأزرار ---
 @bot.callback_query_handler(func=lambda call: True)
