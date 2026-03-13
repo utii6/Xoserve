@@ -49,8 +49,10 @@ def send_captcha(bot, message, referrer):
 
 # 3. دالة معالجة الإجابة وتسجيل المستخدم
 def process_captcha(bot, call, get_db_connection, show_main_menu):
+    bot.answer_callback_query(call.id)
+
     uid = call.from_user.id
-    parts = call.data.split("_") # v_pressed_correct_ref
+    parts = call.data.split("_")
     pressed, correct, ref_id = parts[1], parts[2], int(parts[3])
     
     if pressed == correct:
