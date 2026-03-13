@@ -240,9 +240,7 @@ def start_command(message):
     cursor.close(); conn.close() 
 
     # 4. رسالة الترحيب النهائية وأزرار الخدمات الملونة (API 9.4)
-        markup = types.InlineKeyboardMarkup(row_width=2)
-    
-    # تعريف الأزرار أولاً لضمان ترتيب المسافات
+    markup = types.InlineKeyboardMarkup(row_width=2)
     btn_sub = types.InlineKeyboardButton("👤 زيادة مشتركين", callback_data="ser_sub_14681")
     btn_view = types.InlineKeyboardButton("👀 زيادة مشاهدات", callback_data="ser_view_14527")
     btn_react = types.InlineKeyboardButton("❤️ تفاعلات", callback_data="show_react_menu", color="danger")
@@ -250,7 +248,6 @@ def start_command(message):
     btn_acc = types.InlineKeyboardButton("👤 حسابي", callback_data="my_account", color="primary")
     btn_vip = types.InlineKeyboardButton("💎 اشتراك VIP", callback_data="vip_menu", color="primary")
 
-    # إضافة الأزرار للماركب بمحاذاة صحيحة
     markup.add(btn_sub, btn_view, btn_react, btn_auto, btn_acc, btn_vip)
 
     bot.send_message(
@@ -259,6 +256,7 @@ def start_command(message):
         reply_markup=markup, 
         parse_mode="Markdown"
     )
+
 
 
 
