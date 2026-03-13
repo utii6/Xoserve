@@ -185,17 +185,16 @@ def start_command(message):
     uid = message.from_user.id
     args = message.text.split()
 
-    # 1. فحص الاشتراك الإجباري (مع إضافة ألوان للأزرار لتنبيه المستخدم)
+    # 1. فحص الاشتراك الإجباري
     if not is_subscribed(uid):
         markup_sub = types.InlineKeyboardMarkup(row_width=1)
-        # جعلنا الأزرار باللون الرمادي (gray) ليركز المستخدم على فعل الاشتراك
         btn1 = types.InlineKeyboardButton("📢 قناة مَـدار", url=f"https://t.me/{CH_ID.replace('@','')}", color="gray")
         btn2 = types.InlineKeyboardButton("📢 قناة التحديثات", url="https://t.me/IE2017", color="gray")
         markup_sub.add(btn1, btn2)
         bot.send_message(message.chat.id, "⚠️ **يجب الاشتراك في القنوات أولاً لاستخدام البوت:**", reply_markup=markup_sub, parse_mode="Markdown")
         return 
 
-    # 2. التفاعل التلقائي (إضافة حركة جميلة فور الدخول)
+    # 2. التفاعل التلقائي على رسالة المستخدم
     try:
         bot.set_message_reaction(message.chat.id, message.message_id, [types.ReactionTypeEmoji("❤️‍🔥")], is_big=False)
     except: pass
@@ -217,11 +216,9 @@ def start_command(message):
             if referrer != uid:
                 cursor.execute('UPDATE users SET points = points + 1 WHERE user_id=%s', (referrer,))
                 conn.commit()
-                # إبلاغ المحيل بالنقاط
                 try: bot.send_message(referrer, f"👤 دخل شخص جديد عن طريق رابطك!\n💰 نقاطك الحالية: تم إضافة 1 نقطة.")
                 except: pass
                 
-                # فحص تفعيل VIP التلقائي
                 cursor.execute('SELECT points, is_vip FROM users WHERE user_id=%s', (referrer,))
                 ref_data = cursor.fetchone()
                 if ref_data and ref_data[0] >= 9 and ref_data[1] == 0:
@@ -234,7 +231,6 @@ def start_command(message):
         cursor.execute('INSERT INTO users (user_id, referred_by, username) VALUES (%s, %s, %s)', (uid, referrer, message.from_user.username))
         conn.commit()
         
-        # إشعار المالك (أصلحنا الايموجي والنص)
         owner_msg = (f"<< دخول نفـرر جديد لبوتك >>\n"
                      f"• الاسم😂: {message.from_user.first_name}\n"
                      f"• المعرف💁: @{message.from_user.username or '😂💔فقير وبلا يوزر'}\n"
@@ -245,40 +241,38 @@ def start_command(message):
     
     cursor.close(); conn.close() 
 
-    # 4. رسالة الترحيب النهائية وأزرار الخدمات الملونة (API 9.4)
-markup = types.InlineKeyboardMarkup(row_width=2)
+    # 4. إنشاء قائمة الأزرار الملونة
+    markup = types.InlineKeyboardMarkup(row_width=2)
 
-# دالة إنشاء زر مع اللون
-def btn(text, data, style=None):
-    b = types.InlineKeyboardButton(text, callback_data=data)
-    if style:
-        b.style = style
-    return b
+    def btn(text, data, style=None):
+        b = types.InlineKeyboardButton(text, callback_data=data)
+        if style:
+            b.color = style  # ملاحظة: في النسخ الحديثة نستخدم color بدلاً من style للألوان
+        return b
 
-# الأزرار
-btn_sub   = btn("👤 زيادة مشتركين", "ser_sub_14681")
-btn_view  = btn("👀 زيادة مشاهدات", "ser_view_14527")
+    btn_sub   = btn("👥 زيادة مشتركين", "ser_sub_14681", "success")
+    btn_view  = btn("👀 زيادة مشاهدات", "ser_view_14527", "success")
+    btn_react = btn("❤️ تفاعلات", "show_react_menu", "danger")
+    btn_auto  = btn("👁️ مشاهدات تلقائية", "auto_views_info", "primary")
+    btn_acc   = btn("👤 حسابي", "my_account", "primary")
+    btn_vip   = btn("💎 اشتراك VIP", "vip_menu", "success")
 
-btn_react = btn("❤️ تفاعلات", "show_react_menu", "danger")   # أحمر
-btn_auto  = btn("👁️ مشاهدات تلقائية", "auto_views_info", "primary")  # أزرق
+    markup.add(btn_sub, btn_view)
+    markup.add(btn_react, btn_auto)
+    markup.add(btn_acc, btn_vip)
 
-btn_acc   = btn("👤 حسابي", "my_account", "primary")  # أزرق
-btn_vip   = btn("💎 اشتراك VIP", "vip_menu", "success")  # أخضر
+    # 5. إرسال الرسالة والتفاعل عليها
+    sent_msg = bot.send_message(
+        message.chat.id,
+        "*أهلاً بك في بوت الخدمات المجانية* 🆓\n 𝚍𝚎𝚟: *@E2E12* ✶",
+        reply_markup=markup,
+        parse_mode="Markdown"
+    )
 
-# ترتيب الأزرار
-markup.add(btn_sub, btn_view)
-markup.add(btn_react, btn_auto)
-markup.add(btn_acc, btn_vip)
-
-# إرسال الرسالة
-bot.send_message(
-    message.chat.id,
-    "*أهلاً بك في بوت الخدمات المجانية* 🆓\n 𝚍𝚎𝚟: *@E2E12* ✶",
-    reply_markup=markup,
-    parse_mode="Markdown"
-)
-
-
+    # التفاعل على رسالة البوت نفسها
+    try:
+        bot.set_message_reaction(message.chat.id, sent_msg.message_id, [types.ReactionTypeEmoji("🔥")], is_big=False)
+    except: pass
 
 
 
