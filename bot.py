@@ -260,8 +260,8 @@ def handle_callbacks(call):
         pass
 
     # كابتشا (يجب أن يكون أول شرط)
-    if call.data.startswith("v_"):
-        return security.process_captcha(bot, call, get_db_connection, show_main_menu)
+if call.data.startswith("v_"):
+    return process_captcha(bot, call, get_db_connection, show_main_menu)
 
     if call.data == "back_start":
         start_command(call.message)
