@@ -271,12 +271,14 @@ markup.add(btn_react, btn_auto)
 markup.add(btn_acc, btn_vip)
 
 # إرسال الرسالة
-    bot.send_message(
-        chat_id=message.chat.id,
-        text="*أهلاً بك في بوت الخدمات المجانية* 🆓\n 𝚍𝚎𝚟: *@E2E12* ✶",
-        reply_markup=markup,
-        parse_mode="Markdown"
-    )
+bot.send_message(
+    message.chat.id,
+    "*أهلاً بك في بوت الخدمات المجانية* 🆓\n 𝚍𝚎𝚟: *@E2E12* ✶",
+    reply_markup=markup,
+    parse_mode="Markdown"
+)
+
+
 
 
 
