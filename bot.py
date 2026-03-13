@@ -259,10 +259,12 @@ def handle_callbacks(call):
     except:
         pass
 
-    # كابتشا (يجب أن يكون أول شرط)
-if call.data.startswith("v_"):
-    return process_captcha(bot, call, get_db_connection, show_main_menu)
+    # الكابتشا
+    if call.data.startswith("v_"):
+        return process_captcha(bot, call, get_db_connection, show_main_menu)
 
+    if call.data == "back_start":
+        start_command(call.message)
     if call.data == "back_start":
         start_command(call.message)
 
