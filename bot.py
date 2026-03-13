@@ -3,7 +3,8 @@ from flask import Flask
 from threading import Thread
 from telebot import types
 from captcha import check_user, process_captcha
-
+def show_main_menu(message):
+    bot.send_message(message.chat.id, "✅ تم التحقق يحلو أرسل /start  .")
 # --- كود إرضاء Render (يجب أن يبدأ فوراً) ---
 app = Flask(__name__)
 
