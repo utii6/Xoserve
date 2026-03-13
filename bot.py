@@ -4,11 +4,10 @@ from threading import Thread
 from telebot import types
 
 # دعم ألوان الأزرار
-if not hasattr(types.InlineKeyboardButton, 'style'):
-    types.InlineKeyboardButton.ATTRIBUTE_WHITELIST.append('style')
+if not hasattr(types.InlineKeyboardButton, "style"):
+    setattr(types.InlineKeyboardButton, "style", None)
 
 from captcha import check_user, process_captcha
-
 
 def show_main_menu(message):
     bot.send_message(message.chat.id, "✅ تم التحقق يحلو أرسل /start .")
