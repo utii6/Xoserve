@@ -240,11 +240,10 @@ def start_command(message):
     cursor.close(); conn.close() 
 
     # 4. رسالة الترحيب النهائية وأزرار الخدمات الملونة (API 9.4)
-        markup = types.InlineKeyboardMarkup(row_width=2)
-    markup.add(
-        # success = الأخضر
-        types.InlineKeyboardButton("👥 زيادة مشتركين", callback_data="ser_sub_14681", color="success"),
-        types.InlineKeyboardButton("👀 زيادة مشاهدات", callback_data="ser_view_14527", color="success"),
+    markup = types.InlineKeyboardMarkup(row_width=2)
+    # تأكد أن السطر الذي يليه يبدأ بنفس مستوى المسافات
+    btn_sub = types.InlineKeyboardButton("👤 زيادة مشتركين", callback_data="ser_sub_14681")
+
         
         # danger = الأحمر
         types.InlineKeyboardButton("❤️ تفاعلات", callback_data="show_react_menu", color="danger"),
