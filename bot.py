@@ -324,8 +324,22 @@ def handle_callbacks(call):
     conn.close()
 
     # طلب الرابط من المستخدم
-    msg = bot.send_message(call.message.chat.id, "🔗 *ارسل الرابط هسه:*", parse_mode="Markdown")
-    bot.register_next_step_handler(msg, process_order, s_id, col)
+    if call.data in ["ser_sub_14681", "ser_view_14527"]:
+        # 1. فحص الوقت (قفل الـ 3 ساعات)
+        if not is_vip and (time.time() - last_time) < 10800:
+            rem = int(10800 - (time.time() - last_time))
+            return bot.answer_callback_query(call.id, f"⏳ يحلو متبقي: {rem//3600}س و {(rem%3600)//60}د", show_alert=True)
+
+        # 2. تحديد البيانات حسب الزر
+        s_id = "14681" if "sub" in call.data else "14527"
+        col = "subscribers" if "sub" in call.data else "views"
+        s_type = "follow" if "sub" in call.data else "view"
+
+        # 3. طلب الرابط
+        msg = bot.send_message(call.message.chat.id, "🔗 *ارسل الرابط هسه:*", parse_mode="Markdown")
+        bot.register_next_step_handler(msg, process_order, s_id, col, s_type)
+        return
+
 
 
     if call.data == "auto_views_info":
