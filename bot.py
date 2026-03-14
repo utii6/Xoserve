@@ -291,12 +291,42 @@ def handle_callbacks(call):
         return process_captcha(bot, call, get_db_connection, show_main_menu)
 
     if call.data == "back_start":
-        start_command(call.message)
-    if call.data == "back_start":
-        start_command(call.message)
+        return start_command(call.message)
 
+    # بدء فحص الوقت والاشتراك
     uid = call.from_user.id
-    is_vip = check_vip_status(uid)
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT last_time, is_vip FROM users WHERE user_id = %s", (uid,))
+    res = cursor.fetchone()
+    last_time = res[0] if res and res[0] else 0
+    is_vip = res[1] if res else 0
+
+    wait_seconds = 10800 
+    elapsed = time.time() - last_time
+
+    # التحقق من شرط الوقت للمستخدمين العاديين
+    if not is_vip and elapsed < wait_seconds:
+        rem = int(wait_seconds - elapsed)
+        hours = rem // 3600
+        minutes = (rem % 3600) // 60
+        cursor.close()
+        conn.close()
+        return bot.answer_callback_query(
+            call.id, 
+            f"⏳ يحلو متبقي: {hours} ساعة و {minutes} دقيقة.", 
+            show_alert=True
+        )
+
+    # إغلاق الاتصال قبل الانتقال لطلب الرابط
+    cursor.close()
+    conn.close()
+
+    # طلب الرابط من المستخدم
+    msg = bot.send_message(call.message.chat.id, "🔗 *ارسل الرابط هسه:*", parse_mode="Markdown")
+    bot.register_next_step_handler(msg, process_order, s_id, col)
+
 
     if call.data == "auto_views_info":
         info_text = ("👁️ خدمة المشاهدات التلقائية:\n\n"
@@ -417,35 +447,57 @@ def handle_callbacks(call):
             pass
 
     elif call.data == "my_account":
-        # هذا القسم أيضاً يجب أن يكون على نفس مستوى محاذاة if السابقة
-        conn = get_db_connection(); cursor = conn.cursor()
-        cursor.execute("SELECT points FROM users WHERE user_id=%s", (uid,))
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        # جلب النقاط والوقت معاً
+        cursor.execute("SELECT points, last_time FROM users WHERE user_id=%s", (uid,))
         res = cursor.fetchone()
         points = res[0] if res else 0
+        last_time = res[1] if res and res[1] else 0
         cursor.close(); conn.close()
         
+        # حساب حالة الوقت (الانتظار)
+        wait_seconds = 10800
+        elapsed = time.time() - last_time
+        if is_vip:
+            time_status = "⚡️ أولوية قصوى (بدون انتظار)"
+        elif elapsed < wait_seconds:
+            rem = int(wait_seconds - elapsed)
+            time_status = f"⏳ انتظار ({rem//3600}س و {(rem%3600)//60}د)"
+        else:
+            time_status = "✅ جاهز للطلب الآن"
+
         total_users = get_total_users()
         bot_username = bot.get_me().username
         referral_link = f"https://t.me/{bot_username}?start={uid}"
-        status = "💎 VIP" if is_vip else "👤 عادي"
+        
+        # تصميم الواحدة الجمالي
+        status_icon = "👑" if is_vip else "👤"
+        status_name = "عضو VIP" if is_vip else "عادي"
+        
+        account_msg = (
+            f"┏━━━━━━━❪ 👤 الحساب ❫━━━━━━━┓\n\n"
+            f"🆔 *الآيدي:* `{uid}`\n"
+            f"💰 *الرصيد:* `{points}` نقطة\n"
+            f"{status_icon} *الرتبة:* {status_name}\n"
+            f"⏱ *حالة الطلب:* {time_status}\n"
+            f"👥 *مستخدمي البوت:* {total_users}\n\n"
+            f"┗━━━━━━━━━━━━━━━━━━━━━━┛\n\n"
+            f"🔗 *رابط الدعوة الخاص بك (اربح نقاط):*\n"
+            f"└ `{referral_link}`"
+        )
         
         share_text = f"🚀 أقوى بوت خدمات مجانية!\n{referral_link}"
-        markup = types.InlineKeyboardMarkup()
-        markup.add(types.InlineKeyboardButton("🔗 مشاركة رابط الدعوة", url=f"https://t.me/share/url?url={urllib.parse.quote(share_text)}"))
-        markup.add(types.InlineKeyboardButton("🔙 رجوع", callback_data="back_start"))
-
-        account_msg = (
-            f"🆔 *الايدي:* `{uid}`\n"
-            f"💰 *نقاطك:* {points}\n"
-            f"❤️‍🔥 *حالتك:* {status}\n"
-            f"👥 *عدد المستخدمين الكلي:* {total_users}\n\n"
-            f"🔗 *رابط الدعوة الخاص بك:*\n"
-            f"{referral_link}"
+        markup = types.InlineKeyboardMarkup(row_width=1)
+        markup.add(
+            types.InlineKeyboardButton("📤 مشاركة الرابط", url=f"https://t.me/share/url?url={urllib.parse.quote(share_text)}"),
+            types.InlineKeyboardButton("🔙 العودة", callback_data="back_start")
         )
+
         try:
-            bot.edit_message_text(account_msg, call.message.chat.id, call.message.message_id, reply_markup=markup)
+            bot.edit_message_text(account_msg, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="Markdown")
         except:
-            bot.send_message(call.message.chat.id, account_msg, reply_markup=markup)
+            bot.send_message(call.message.chat.id, account_msg, reply_markup=markup, parse_mode="Markdown")
 
 
     elif call.data == "vip_menu":
@@ -540,28 +592,35 @@ def give_points_final(message, tid):
 def process_order(message, s_id, col, s_type):
     if not message.text or not message.text.startswith("http"):
         return bot.send_message(message.chat.id, "❌ الرابط غير صحيح.")
+    
     qty = 800 if s_type == "view" else 50
     try:
         res = requests.post(API_URL, data={'key': SMM_API_KEY, 'action': 'add', 'service': s_id, 'link': message.text, 'quantity': qty}).json()
+        
         if "order" in res:
-            order_id = res["order"]  # جلب رقم الطلب من استجابة الموقع
-            conn = get_db_connection(); cursor = conn.cursor()
-            cursor.execute(f"UPDATE users SET {col}=%s WHERE user_id=%s", (time.time(), message.from_user.id))
-            conn.commit(); cursor.close(); conn.close()
+            order_id = res["order"]
+            conn = get_db_connection()
+            cursor = conn.cursor()
             
-            # تعديل رسالة النجاح لإظهار رقم الطلب
+            # التعديل هنا: تحديث عمود الخدمة + تحديث عمود last_time لقفل الوقت
+            cursor.execute(f"UPDATE users SET {col}=%s, last_time=%s WHERE user_id=%s", (time.time(), time.time(), message.from_user.id))
+            
+            conn.commit()
+            cursor.close()
+            conn.close()
+            
             success_msg = (f"✅ **تم الطلب بنجاح!**\n\n"
-                           f"🔢 رقم الطلب: `{order_id}`\n"
-                           f"📦 الكمية: +99\n"
+                           f"🔢 *رقم الطلب*: `{order_id}`\n"
+                           f"📦 الكمية*: +99*\n"
                            f"⏳ حالة الطلب: قيد المعالجة")
             
             bot.send_message(message.chat.id, success_msg, parse_mode="Markdown")
         else: 
             bot.send_message(message.chat.id, "❌ فشل راجع @IE2017 .")
 
-
     except Exception as e:
         print(f"Error: {e}")
+
 
 def broadcast_step(message):
     conn = get_db_connection()
