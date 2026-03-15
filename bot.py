@@ -256,19 +256,25 @@ def start_command(message):
     btn_auto  = btn("👁️ مشاهدات تلقائية", "auto_views_info", "primary")
     btn_acc   = btn("👤 حسابي", "my_account", "primary")
     btn_vip   = btn("💎 اشتراك VIP", "vip_menu", "success")
-    btn_support = types.InlineKeyboardButton("👨‍💻 الدعم", url="https://t.me/m/acqUjFrvNzcy")
-    btn_stats = btn("✅ الطلبات المجانيه المكتملة: 885740", "stats_info", "primary")
+    btn_support = types.InlineKeyboardButton("👨‍💻 الدعم الفني", url="https://t.me/m/acqUjFrvNzcy")
+    btn_stats = btn(f"✅ الطلبات المجانيه: {fake_orders}", "stats_info", "primary")
 
 
-    markup.add(btn_support, btn_stats)
+
     markup.add(btn_sub, btn_view)
     markup.add(btn_react, btn_auto)
     markup.add(btn_acc, btn_vip)
+    markup.add(btn_support, btn_stats)
+    try:
+        cursor.execute("SELECT COUNT(*) FROM orders")
+        fake_orders = 104874 + cursor.fetchone()[0]
+    except:
+        fake_orders = 104874
 
     # 5. إرسال الرسالة والتفاعل عليها
     sent_msg = bot.send_message(
         message.chat.id,
-        "*أهلاً بك في بوت الخدمات المجانية* 🆓\n 𝚍𝚎𝚟: *@E2E12* ✶",
+        "*أهلاً بك في بوت الخدمات المجانية* 🆓\n*ارفع تفاعل قناتك مجاناً*✶",
         reply_markup=markup,
         parse_mode="Markdown"
     )
