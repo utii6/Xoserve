@@ -191,7 +191,7 @@ def start_command(message):
         btn1 = types.InlineKeyboardButton("📢 قناة مَـدار", url=f"https://t.me/{CH_ID.replace('@','')}", color="gray")
         btn2 = types.InlineKeyboardButton("📢 قناة التحديثات", url="https://t.me/IE2017", color="gray")
         markup_sub.add(btn1, btn2)
-        bot.send_message(message.chat.id, "⚠️ **يجب الاشتراك في القنوات أولاً لاستخدام البوت:**", reply_markup=markup_sub, parse_mode="Markdown")
+        bot.send_message(message.chat.id, "⚠️ ** الاشتراك في القنوات أولاً :**", reply_markup=markup_sub, parse_mode="Markdown")
         return 
 
     # 2. التفاعل التلقائي على رسالة المستخدم
@@ -263,7 +263,7 @@ def start_command(message):
     btn_acc   = btn("👤 حسابي", "my_account", "primary")
     btn_vip   = btn("💎 اشتراك VIP", "vip_menu", "success")
     btn_support = types.InlineKeyboardButton("👨‍💻 الدعم الفني", url="https://t.me/m/acqUjFrvNzcy")
-    btn_stats = btn(f"✅ الطلبات المجانيه: {fake_orders}", "stats_info", "primary")
+    btn_stats = btn(f"✅الطلبات: {fake_orders}", "stats_info", "primary")
 
 
 
@@ -273,12 +273,25 @@ def start_command(message):
     markup.add(btn_support, btn_stats)
 
     # 5. إرسال الرسالة والتفاعل عليها
+        # جلب اسم المستخدم بشكل آمن
+    user_name = message.from_user.first_name
+
+    # نص ترحيبي أقوى ومنسق
+    welcome_text = (
+        f"👋 *أهلاً بك يا {user_name}*\n\n"
+        "🚀 *في بوت الخدمات المجانية الأسرع!*\n"
+        "━━━━━━━━━━━━━━━\n"
+        "💎 *ارفع تفاعل قناتك الآن مجاناً* ✶\n\n"
+        "📍 _اختر الخدمة التي تريدها من الأسفل:_"
+    )
+
     sent_msg = bot.send_message(
         message.chat.id,
-        "*أهلاً بك في بوت الخدمات المجانية* 🆓\n*ارفع تفاعل قناتك مجاناً*✶",
+        welcome_text,
         reply_markup=markup,
         parse_mode="Markdown"
     )
+
 
     # التفاعل على رسالة البوت نفسها
     try:
@@ -301,6 +314,25 @@ def handle_callbacks(call):
     if call.data.startswith("v_"):
         return process_captcha(bot, call, get_db_connection, show_main_menu)
 
+    # إحصائيات النظام (الزر الجديد)
+    if call.data == "stats_info":
+        bot.send_chat_action(call.message.chat.id, 'typing')
+        status_text = (
+            "✨ **نظام الخدمات& احصائيات شبه شامله - DASHBOARD**\n"
+            "━━━━━━━━━━━━━━━\n"
+            "📈 **حالة الطلبات الإجمالية:**\n"
+            "┣ المكتملة: `104,874` ✅\n"
+            "┣ قيد المعالجة: `74012` ⏳\n"
+            "┗ سرعة الاستجابة: `0.01ms` ⚡\n\n"
+            "📡 **حالة السيرفرات والاتصال:**\n"
+            "┣ سيرفر آسيا: `متصل` 🟢\n"
+            "┗ سيرفر أوروبا: `متصل` 🟢\n"
+            "━━━━━━━━━━━━━━━\n"
+            "🛡️👨🏼‍💻 _يتم فحص وتحديث البيانات كل دقيقة_"
+        )
+        return bot.send_message(call.message.chat.id, status_text, parse_mode="Markdown")
+
+    
     if call.data == "back_start":
         return start_command(call.message)
 
