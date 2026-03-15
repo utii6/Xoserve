@@ -256,7 +256,11 @@ def start_command(message):
     btn_auto  = btn("👁️ مشاهدات تلقائية", "auto_views_info", "primary")
     btn_acc   = btn("👤 حسابي", "my_account", "primary")
     btn_vip   = btn("💎 اشتراك VIP", "vip_menu", "success")
+    btn_support = types.InlineKeyboardButton("👨‍💻 الدعم", url="https://t.me/m/acqUjFrvNzcy")
+    btn_stats = btn("✅ الطلبات المجانيه المكتملة: 885740", "stats_info", "primary")
 
+
+    markup.add(btn_support, btn_stats)
     markup.add(btn_sub, btn_view)
     markup.add(btn_react, btn_auto)
     markup.add(btn_acc, btn_vip)
