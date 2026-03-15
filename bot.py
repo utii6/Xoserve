@@ -249,6 +249,12 @@ def start_command(message):
         if style:
             b.color = style  # ملاحظة: في النسخ الحديثة نستخدم color بدلاً من style للألوان
         return b
+    fake_orders = 104874
+    try:
+        cursor.execute("SELECT COUNT(*) FROM orders")
+        fake_orders += cursor.fetchone()[0]
+    except:
+        pass
 
     btn_sub   = btn("👥 زيادة مشتركين", "ser_sub_14681", "success")
     btn_view  = btn("👀 زيادة مشاهدات", "ser_view_14527", "success")
@@ -265,11 +271,6 @@ def start_command(message):
     markup.add(btn_react, btn_auto)
     markup.add(btn_acc, btn_vip)
     markup.add(btn_support, btn_stats)
-    try:
-        cursor.execute("SELECT COUNT(*) FROM orders")
-        fake_orders = 104874 + cursor.fetchone()[0]
-    except:
-        fake_orders = 104874
 
     # 5. إرسال الرسالة والتفاعل عليها
     sent_msg = bot.send_message(
