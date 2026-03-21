@@ -264,14 +264,16 @@ def start_command(message):
     btn_vip   = btn("💎 اشتراك VIP", "vip_menu", "success")
     btn_support = types.InlineKeyboardButton("👨‍💻 الدعم الفني", url="https://t.me/m/acqUjFrvNzcy")
     btn_stats = btn(f"✅الطلبات: {fake_orders}", "stats_info", "primary")
-
-
+    btn_daily = btn("🎁 هدية 12 ساعة", "get_daily", "success")
+    btn_weekly = btn("🌟 هدية أسبوعية", "get_weekly", "primary")
+    btn_promo = btn("🎁 استخدام كود", "use_promo_code", "warning")
 
     markup.add(btn_sub, btn_view)
     markup.add(btn_react, btn_auto)
     markup.add(btn_acc, btn_vip)
     markup.add(btn_support, btn_stats)
-
+    markup.add(btn_daily, btn_weekly)
+    markup.add(btn_promo)
     # 5. إرسال الرسالة والتفاعل عليها
         # جلب اسم المستخدم بشكل آمن
     user_name = message.from_user.first_name
