@@ -279,13 +279,23 @@ def start_command(message):
     user_name = message.from_user.first_name
 
     # نص ترحيبي أقوى ومنسق
+    # جلب النقاط من قاعدة البيانات
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT points FROM users WHERE user_id = %s', (message.from_user.id,))
+    res = cursor.fetchone()
+    user_points = res[0] if res else 0
+    cursor.close(); conn.close()
+
     welcome_text = (
         f"👋 *أهلاً بك يا {user_name}*\n\n"
+        f"💰 * نقاطك:* `{user_points}`\n"
         "🚀 *في بوت الخدمات المجانية الأسرع!*\n"
         "━━━━━━━━━━━━━━━\n"
         "💎 *ارفع تفاعل قناتك الآن مجاناً* ✶\n\n"
         "📍 _اختر الخدمة التي تريدها من الأسفل:_"
     )
+
 
     sent_msg = bot.send_message(
         message.chat.id,
@@ -306,11 +316,60 @@ def start_command(message):
 # --- معالجة الأزرار ---
 @bot.callback_query_handler(func=lambda call: True)
 def handle_callbacks(call):
+    uid = call.from_user.id
+    chat_id = call.message.chat.id
 
     try:
         bot.answer_callback_query(call.id)
     except:
         pass
+
+    # --- 1. هدايا المستخدم (تعمل للجميع ولا تخضع لقفل الوقت) ---
+
+    # هدية الـ 12 ساعة
+    if call.data == "get_daily":
+        from datetime import datetime
+        now = datetime.now()
+        conn = get_db_connection(); cursor = conn.cursor()
+        cursor.execute("SELECT last_daily_gift FROM users WHERE user_id = %s", (uid,))
+        res = cursor.fetchone()
+        last = res[0] if res and res[0] else None
+        
+        if last and (now - last).total_seconds() < 43200:
+            rem = int(43200 - (now - last).total_seconds())
+            cursor.close(); conn.close()
+            return bot.answer_callback_query(call.id, f"⏳  يحلو متبقي: {rem//3600}س و {(rem%3600)//60}د", show_alert=True)
+        
+        cursor.execute("UPDATE users SET points = points + 10, last_daily_gift = %s WHERE user_id = %s", (now, uid))
+        conn.commit(); cursor.close(); conn.close()
+        return bot.answer_callback_query(call.id, "✅❤️‍🔥 مبروك! حصلت على 10 نقاط هدية.", show_alert=True)
+
+    # الهدية الأسبوعية
+    if call.data == "get_weekly":
+        from datetime import datetime
+        now = datetime.now()
+        conn = get_db_connection(); cursor = conn.cursor()
+        cursor.execute("SELECT last_weekly_gift FROM users WHERE user_id = %s", (uid,))
+        res = cursor.fetchone()
+        last = res[0] if res and res[0] else None
+        
+        if last and (now - last).total_seconds() < 604800:
+            days = int(7 - (now - last).days)
+            cursor.close(); conn.close()
+            return bot.answer_callback_query(call.id, f"⏳ متبقي {days} أيام لهديتك القادمة.", show_alert=True)
+        
+        cursor.execute("UPDATE users SET points = points + 100, last_weekly_gift = %s WHERE user_id = %s", (now, uid))
+        conn.commit(); cursor.close(); conn.close()
+        return bot.answer_callback_query(call.id, "🔥😂 مذهل! استلمت 100 نقطة هدية الأسبوع!", show_alert=True)
+
+    # استخدام الكود
+    if call.data == "use_promo_code":
+        msg = bot.send_message(chat_id, "🎟️ **أرسل كود الهدية الآن لشحن رصيدك:**", parse_mode="Markdown")
+        bot.register_next_step_handler(msg, process_promo_code)
+        return
+
+    # --- [هنا تضع بقية كودك القديم (الاشتراك، فحص الوقت، الخدمات) كما هو] ---
+
 
     # الكابتشا
     if call.data.startswith("v_"):
@@ -372,7 +431,7 @@ def handle_callbacks(call):
     if call.data in ["ser_sub_14681", "ser_view_14527"]:
         # 1. فحص الوقت (قفل الـ 3 ساعات)
         if not is_vip and (time.time() - last_time) < 10800:
-            rem = int(10800 - (time.time() - last_time))
+            rem = int(10 - (time.time() - last_time))
             return bot.answer_callback_query(call.id, f"⏳ يحلو متبقي: {rem//3600}س و {(rem%3600)//60}د", show_alert=True)
 
         # 2. تحديد البيانات حسب الزر
@@ -396,36 +455,26 @@ def handle_callbacks(call):
     if call.data.startswith("v_"):
         return process_captcha(bot, call, get_db_connection, show_main_menu)
 
-    # استجابة أزرار الإدارة
-    if call.data.startswith("v_"):
-        return process_captcha(bot, call, get_db_connection, show_main_menu)
-
-    # استجابة أزرار الإدارة (يجب أن تكون على نفس مستوى الـ if السابقة)
+    # استجابة أزرار الإدارة (توضع داخل دالة handle_callbacks)
     if call.data.startswith("adm_") and uid == OWNER_ID:
         action = call.data.split("_")[1]
         
-        # هنا كان الخطأ! يجب أن يكون 'if' تحت 'action' مباشرة بـ 4 مسافات
+        if action == "points":
+            msg = bot.send_message(call.message.chat.id, "👤 **أرسل آيدي المستخدم المراد شحنه:**", parse_mode="Markdown")
+            bot.register_next_step_handler(msg, get_user_id_for_points)
+            return
+
         if action == "sts":
             conn = get_db_connection()
             cursor = conn.cursor()
-            # ... باقي الكود الخاص بالإحصائيات ...
-
-            # 1. إجمالي المستخدمين
             cursor.execute('SELECT COUNT(*) FROM users')
             total = cursor.fetchone()[0]
-            
-            # 2. عدد المحظورين
             cursor.execute('SELECT COUNT(*) FROM users WHERE is_banned = 1')
             banned = cursor.fetchone()[0]
-            
-            # 3. عدد مستخدمي VIP
             cursor.execute('SELECT COUNT(*) FROM users WHERE is_vip = 1')
             vips = cursor.fetchone()[0]
-            
-            # 4. إجمالي النقاط المتداولة
             cursor.execute('SELECT SUM(points) FROM users')
             all_points = cursor.fetchone()[0] or 0
-            
             cursor.close(); conn.close()
 
             stats_text = (
@@ -438,6 +487,17 @@ def handle_callbacks(call):
                 "━━━━━━━━━━━━━━━\n"
                 "✅ *الحالة: *تعمل بكفاءة"
             )
+            bot.edit_message_text(stats_text, call.message.chat.id, call.message.message_id, 
+                                 reply_markup=call.message.reply_markup, parse_mode="Markdown")
+            return
+
+            return
+
+        elif action == "points":
+            msg = bot.send_message(call.message.chat.id, "👤 **أرسل آيدي المستخدم المراد شحنه:**", parse_mode="Markdown")
+            bot.register_next_step_handler(msg, get_user_id_for_points)
+            return
+
             
             # تعديل الرسالة لإظهار التفاصيل كاملة
             bot.edit_message_text(stats_text, call.message.chat.id, call.message.message_id, 
@@ -713,6 +773,115 @@ def got_payment(message):
 def forward_to_owner(message):
     try: bot.forward_message(OWNER_ID, message.chat.id, message.message_id)
     except: pass
+def process_promo_code(message):
+    uid_str = str(message.from_user.id)
+    code_txt = message.text.strip()
+    
+    # 1. الاتصال بقاعدة البيانات وفحص الكود
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT points, max_uses, current_uses, used_by FROM promo_codes WHERE code = %s", (code_txt,))
+    res = cursor.fetchone()
+    
+    # 2. التحقق من صحة الكود
+    if not res:
+        cursor.close(); conn.close()
+        return bot.reply_to(message, "❌ **يحلو الكود غير موجود أو غير صحيح.**", parse_mode="Markdown")
+        
+    pts, m_uses, c_uses, u_by = res
+    
+    # 3. التحقق إذا كان المستخدم قد استخدم الكود مسبقاً
+    if uid_str in u_by.split(","):
+        cursor.close(); conn.close()
+        return bot.reply_to(message, "🚫 **شبيـك حبيبي استخدمت هذا الكود!**", parse_mode="Markdown")
+        
+    # 4. التحقق من صلاحية الكود (العدد المتبقي)
+    if c_uses >= m_uses:
+        cursor.close(); conn.close()
+        return bot.reply_to(message, "😔 **للأسف، انتهت صلاحية هذا الكود (وصل للحد الأقصى).**", parse_mode="Markdown")
+        
+    # 5. تنفيذ الشحن وتحديث البيانات
+    new_used_list = u_by + f"{uid_str},"
+    cursor.execute("UPDATE promo_codes SET current_uses = current_uses + 1, used_by = %s WHERE code = %s", (new_used_list, code_txt))
+    cursor.execute("UPDATE users SET points = points + %s WHERE user_id = %s", (pts, int(uid_str)))
+    conn.commit()
+    cursor.close(); conn.close()
+    
+    bot.reply_to(message, f"✅ **تم قبول الكود بنجاح!**\n💰 **تم إضافة {pts} نقطة إلى رصيدك.**", parse_mode="Markdown")
+
+@bot.message_handler(commands=['m_c'])
+def admin_m_c(message):
+    # التحقق من أن المرسل هو صاحب البوت فقط
+    if message.from_user.id != OWNER_ID:
+        return
+
+    try:
+        # الصيغة المتوقعة: /make_code [الكود] [النقاط] [العدد]
+        args = message.text.split()
+        if len(args) < 4:
+            return bot.reply_to(message, "⚠️ **الصيغة:** `/make_code [الكود] [النقاط] [العدد]`", parse_mode="Markdown")
+
+        code_name = args[1]     # نص الكود (مثل A18)
+        points_val = int(args[2]) # عدد النقاط
+        max_uses_val = int(args[3]) # عدد المستخدمين المسموح لهم
+
+        # الاتصال وإدراج الكود في الجدول
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # إدخال البيانات (الـ current_uses يبدأ بـ 0 والـ used_by يبدأ بنص فارغ)
+        cursor.execute(
+            "INSERT INTO promo_codes (code, points, max_uses, current_uses, used_by) VALUES (%s, %s, %s, 0, '')",
+            (code_name, points_val, max_uses_val)
+        )
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        bot.reply_to(message, f"✅ **تم إنشاء الكود بنجاح!**\n\n🎟️ الكود: `{code_name}`\n💰 النقاط: `{points_val}`\n👥 لعدد: `{max_uses_val}` مستخدم.", parse_mode="Markdown")
+
+    except Exception as e:
+        bot.reply_to(message, f"❌ **حدث خطأ:**\n`{str(e)}`", parse_mode="Markdown")
+
+# --- [ كود عملية الشحن الكاملة ] ---
+
+# 1. استقبال الآيدي (الخطوة الأولى)
+def get_user_id_for_points(message):
+    target_id = message.text
+    if not target_id.isdigit():
+        return bot.reply_to(message, "❌ **الآيدي يجب أن يكون أرقاماً فقط.**")
+    
+    msg = bot.send_message(message.chat.id, f"👤 **المستخدم:** `{target_id}`\n💰 **أرسل الآن عدد النقاط لإضافتها:**", parse_mode="Markdown")
+    # الانتقال لخطوة التنفيذ مع تمرير الآيدي
+    bot.register_next_step_handler(msg, lambda m: finalize_points_charge(m, target_id))
+
+# 2. تنفيذ الشحن في قاعدة البيانات (الخطوة الثانية)
+def finalize_points_charge(message, target_id):
+    try:
+        amount = int(message.text)
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # تحديث النقاط في جدول المستخدمين
+        cursor.execute("UPDATE users SET points = points + %s WHERE user_id = %s", (amount, int(target_id)))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        bot.send_message(message.chat.id, f"✅ **تمت العملية بنجاح!**\n💰 أضيفت `{amount}` نقطة للمستخدم `{target_id}`.", parse_mode="Markdown")
+        
+        # إشعار للمستخدم المشحون له (اختياري)
+        try: 
+            bot.send_message(target_id, f"🎉 **بشرى سارة!**\nلقد قام @E2E12 بشحن حسابك بـ `{amount}` نقطة.", parse_mode="Markdown")
+        except: 
+            pass
+            
+    except ValueError:
+        bot.reply_to(message, "❌ **خطأ! يجب إرسال رقم صحيح (مثلاً: 500).**")
+    except Exception as e:
+        bot.reply_to(message, f"❌ **حدث خطأ تقني:**\n`{str(e)}`", parse_mode="Markdown")
+
 
 import time
 if __name__ == "__main__":
